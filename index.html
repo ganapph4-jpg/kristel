@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FireStore POS | Barcode Scanner & Smart Cart</title>
+    <!-- Firebase SDKs (Modular Version) -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdP_K1jC5ZIv6Fi3QHKy60W3aeNbF3iIA",
+            authDomain: "kristel-db717.firebaseapp.com",
+            projectId: "kristel-db717",
+            storageBucket: "kristel-db717.firebasestorage.app",
+            messagingSenderId: "708640943655",
+            appId: "1:708640943655:web:ac6c3c91b4e6f07e232802",
+            measurementId: "G-Y6GDJQTZNE"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+        
+        // Make db available globally
+        window.db = db;
+        window.analytics = analytics;
+        console.log("✅ Firebase initialized successfully!");
+    </script>
+    <!-- QuaggaJS for barcode scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #e0eafc 0%, #cfdef3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            max-width: 1400px;
+            margin: 0 auto 20px auto;
+            background: white;
+            border-radius: 32px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+        }
+
+        .firebase-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: #22c55e;
+            color: white;
+        }
+
+        .status-initializing {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* Main POS Grid */
+        .pos-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 42px;
+            backdrop-filter: blur(2px);
+            padding: 20px;
+        }
+
+        /* Left Panel */
+        .products-panel {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scanner-area {
+            background: #1e293b;
+            padding: 20px;
+            color: white;
+            border-bottom: 1px solid #334155;
+        }
+
+        .scanner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .scanner-header h2 {
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-scan-toggle {
+            background: #3b82f6;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-scan-toggle:hover {
+            background: #2563eb;
+            transform: scale(0.97);
+        }
+
+        #interactive {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            background: #0f172a;
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .scanner-placeholder {
+            background: #0f172a;
+            border-radius: 24px;
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+        }
+
+        .manual-input {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .manual-input input {
+            flex: 2;
+            padding: 12px 16px;
+            border-radius: 60px;
+            border: none;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .manual-input button {
+            background: #f97316;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .products-grid-section {
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 5px solid #f97316;
+            padding-left: 16px;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .product-card {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            border-color: #f97316;
+            background: #fff7ed;
+        }
+
+        .product-name {
+            font-weight: 800;
+            font-size: 1rem;
+        }
+
+        .product-price {
+            color: #f97316;
+            font-weight: 700;
+            margin: 6px 0;
+        }
+
+        .product-barcode {
+            font-size: 0.7rem;
+            color: #475569;
+            font-family: monospace;
+        }
+
+        /* Cart Panel */
+        .cart-panel {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .cart-header {
+            background: #f97316;
+            padding: 20px;
+            color: white;
+        }
+
+        .cart-items {
+            flex: 1;
+            max-height: 460px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #fef9f2;
+        }
+
+        .cart-item {
+            background: white;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 6px solid #f97316;
+        }
+
+        .cart-item-info {
+            flex: 2;
+        }
+
+        .cart-item-title {
+            font-weight: 700;
+        }
+
+        .cart-item-price {
+            font-size: 0.8rem;
+            color: #f97316;
+        }
+
+        .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 40px;
+        }
+
+        .qty-btn {
+            background: none;
+            border: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 28px;
+            color: #1e293b;
+        }
+
+        .cart-item-total {
+            font-weight: 800;
+            margin-left: 12px;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .remove-item {
+            background: #fee2e2;
+            border: none;
+            border-radius: 40px;
+            padding: 6px 12px;
+            margin-left: 8px;
+            cursor: pointer;
+            color: #dc2626;
+        }
+
+        .cart-summary {
+            padding: 20px;
+            border-top: 2px dashed #fed7aa;
+            background: white;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .btn-checkout {
+            background: #22c55e;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-checkout:hover {
+            transform: scale(0.98);
+            background: #16a34a;
+        }
+
+        .btn-clear {
+            background: #64748b;
+            margin-top: 8px;
+        }
+
+        .btn-clear:hover {
+            background: #475569;
+        }
+
+        .toast-msg {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 60px;
+            z-index: 999;
+            font-weight: 500;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        @media (max-width: 860px) {
+            .pos-container {
+                grid-template-columns: 1fr;
+            }
+            .cart-panel {
+                position: static;
+            }
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .add-product-btn {
+            background: #3b82f6;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+    <div class="firebase-status">
+        <i class="fas fa-fire" style="color: #f97316;"></i>
+        <span>Firebase Status:</span>
+        <span id="firebaseStatusBadge" class="status-badge status-initializing">Initializing...</span>
+    </div>
+    <div>
+        <i class="fas fa-store"></i> Kristel's POS System
+    </div>
+</div>
+
+<div class="pos-container">
+    <!-- LEFT SIDE: SCANNER & PRODUCTS DB -->
+    <div class="products-panel">
+        <div class="scanner-area">
+            <div class="scanner-header">
+                <h2><i class="fas fa-camera"></i> Barcode Scanner</h2>
+                <button id="toggleScannerBtn" class="btn-scan-toggle"><i class="fas fa-play"></i> Start Scanner</button>
+            </div>
+            <div id="scannerContainer">
+                <div id="interactive" class="scanner-placeholder" style="display: none;"></div>
+                <div id="scannerPlaceholderMsg" class="scanner-placeholder">
+                    <i class="fas fa-qrcode" style="font-size: 32px;"></i>
+                    <p>Scanner idle. Click "Start Scanner" & allow camera.</p>
+                </div>
+            </div>
+            <div class="manual-input">
+                <input type="text" id="manualBarcode" placeholder="Enter barcode manually (e.g., 123456789012)" />
+                <button id="manualLookupBtn"><i class="fas fa-search"></i> Add to Cart</button>
+            </div>
+            <div style="font-size: 12px; margin-top: 10px; text-align: center; color:#cbd5e1;">
+                <i class="fas fa-database"></i> Connected to Firestore | Scan or search to add to cart
+            </div>
+        </div>
+
+        <div class="products-grid-section">
+            <div class="section-title">
+                <i class="fas fa-boxes"></i> Product Database (Firestore)
+                <button id="addSampleProductsBtn" class="add-product-btn"><i class="fas fa-plus"></i> Add Samples</button>
+            </div>
+            <div id="productGridContainer" class="product-grid">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-pulse"></i> Loading products from Firestore...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: CART -->
+    <div class="cart-panel">
+        <div class="cart-header">
+            <h2><i class="fas fa-shopping-cart"></i> Current Sale</h2>
+        </div>
+        <div id="cartItemsList" class="cart-items">
+            <div style="text-align:center; color:#aaa; padding: 40px;">Cart is empty</div>
+        </div>
+        <div class="cart-summary">
+            <div class="total-row">
+                <span>TOTAL</span>
+                <span id="cartTotalAmount">$0.00</span>
+            </div>
+            <button id="checkoutBtn" class="btn-checkout"><i class="fas fa-receipt"></i> Complete Sale</button>
+            <button id="clearCartBtn" class="btn-checkout btn-clear"><i class="fas fa-trash-alt"></i> Clear Cart</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // Firebase is already initialized in the module script above
+    // Import additional Firebase services
+    import { getFirestore, collection, getDocs, addDoc, query, limit, orderBy, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    
+    // Get Firestore instance
+    const db = window.db;
+    let productsArray = [];
+    let cart = [];
+    let scannerActive = false;
+    let scannerInitialized = false;
+
+    // Update status badge
+    function updateStatus(status, message) {
+        const badge = document.getElementById('firebaseStatusBadge');
+        if (status === 'connected') {
+            badge.className = 'status-badge status-connected';
+            badge.innerHTML = '✓ Connected';
+        } else if (status === 'error') {
+            badge.className = 'status-badge status-initializing';
+            badge.innerHTML = '⚠ Error';
+        }
+        if (message) showToast(message);
+    }
+
+    // Fetch products from Firestore
+    async function fetchProductsFromFirestore() {
+        try {
+            const productsRef = collection(db, "products");
+            const querySnapshot = await getDocs(productsRef);
+            
+            if (querySnapshot.empty) {
+                console.log("No products found in Firestore");
+                productsArray = [];
+                renderProductGrid();
+                showToast("No products found. Click 'Add Samples' to add demo products.");
+                updateStatus('connected', 'Connected but no products');
+                return;
+            }
+            
+            productsArray = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                productsArray.push({
+                    id: doc.id,
+                    name: data.name || "Unnamed Product",
+                    price: data.price || 0,
+                    barcode: data.barcode || ""
+                });
+            });
+            
+            renderProductGrid();
+            updateStatus('connected', `Loaded ${productsArray.length} products`);
+            console.log("Products loaded:", productsArray);
+        } catch (error) {
+            console.error("Error fetching products:", error);
+            showToast("Error loading products: " + error.message);
+            updateStatus('error', 'Failed to load products');
+            renderProductGrid(true); // Show error in grid
+        }
+    }
+
+    // Add sample products to Firestore
+    async function addSampleProducts() {
+        const sampleProducts = [
+            { name: "Organic Avocado", price: 2.99, barcode: "123456789012" },
+            { name: "Whole Milk 1L", price: 1.49, barcode: "987654321098" },
+            { name: "Sourdough Bread", price: 3.79, barcode: "456789123045" },
+            { name: "Espresso Beans", price: 8.99, barcode: "111222333444" },
+            { name: "Greek Yogurt", price: 1.29, barcode: "555666777888" },
+            { name: "Cheddar Cheese", price: 4.49, barcode: "999000111222" },
+            { name: "Orange Juice", price: 3.49, barcode: "777888999000" },
+            { name: "Coffee Creamer", price: 2.29, barcode: "444555666777" }
+        ];
+        
+        showToast("Adding sample products...");
+        
+        try {
+            const productsRef = collection(db, "products");
+            for (const product of sampleProducts) {
+                await addDoc(productsRef, product);
+            }
+            showToast(`✅ Added ${sampleProducts.length} sample products!`);
+            await fetchProductsFromFirestore();
+        } catch (error) {
+            console.error("Error adding sample products:", error);
+            showToast("Failed to add sample products: " + error.message);
+        }
+    }
+
+    // Render product grid
+    function renderProductGrid(error = false) {
+        const container = document.getElementById("productGridContainer");
+        
+        if (error) {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> Error loading products.<br>
+                Check Firebase connection.
+            </div>`;
+            return;
+        }
+        
+        if (!productsArray.length) {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">
+                <i class="fas fa-database"></i> No products available.<br>
+                Click "Add Samples" to add demo products.
+            </div>`;
+            return;
+        }
+        
+        container.innerHTML = productsArray.map(prod => `
+            <div class="product-card" data-barcode="${prod.barcode}" data-name="${escapeHtml(prod.name)}" data-price="${prod.price}">
+                <div class="product-name">${escapeHtml(prod.name)}</div>
+                <div class="product-price">$${prod.price.toFixed(2)}</div>
+                <div class="product-barcode"><i class="fas fa-barcode"></i> ${prod.barcode || 'N/A'}</div>
+            </div>
+        `).join('');
+        
+        // Add click handlers to product cards
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('click', () => {
+                addToCart({
+                    barcode: card.dataset.barcode,
+                    name: card.dataset.name,
+                    price: parseFloat(card.dataset.price)
+                });
+            });
+        });
+    }
+
+    // Add to cart
+    function addToCart(product) {
+        const existing = cart.find(item => item.barcode === product.barcode);
+        if (existing) {
+            existing.quantity++;
+        } else {
+            cart.push({ ...product, quantity: 1 });
+        }
+        renderCart();
+        showToast(`✓ ${product.name} added to cart`);
+    }
+
+    // Update cart item quantity
+    function updateQuantity(barcode, delta) {
+        const index = cart.findIndex(item => item.barcode === barcode);
+        if (index !== -1) {
+            const newQty = cart[index].quantity + delta;
+            if (newQty <= 0) {
+                cart.splice(index, 1);
+            } else {
+                cart[index].quantity = newQty;
+            }
+            renderCart();
+        }
+    }
+
+    // Remove item from cart
+    function removeItem(barcode) {
+        cart = cart.filter(item => item.barcode !== barcode);
+        renderCart();
+        showToast("Item removed");
+    }
+
+    // Clear cart
+    function clearCart() {
+        cart = [];
+        renderCart();
+        showToast("Cart cleared");
+    }
+
+    // Render cart
+    function renderCart() {
+        const container = document.getElementById("cartItemsList");
+        const totalSpan = document.getElementById("cartTotalAmount");
+        
+        if (cart.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#aaa; padding: 40px;">Cart is empty</div>';
+            totalSpan.innerText = "$0.00";
+            return;
+        }
+        
+        let total = 0;
+        container.innerHTML = '';
+        
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML = `
+                <div class="cart-item-info">
+                    <div class="cart-item-title">${escapeHtml(item.name)}</div>
+                    <div class="cart-item-price">$${item.price.toFixed(2)} each</div>
+                </div>
+                <div class="cart-item-qty">
+                    <button class="qty-btn" data-barcode="${item.barcode}" data-delta="-1">-</button>
+                    <span>${item.quantity}</span>
+                    <button class="qty-btn" data-barcode="${item.barcode}" data-delta="1">+</button>
+                </div>
+                <div class="cart-item-total">$${itemTotal.toFixed(2)}</div>
+                <button class="remove-item" data-barcode="${item.barcode}"><i class="fas fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        });
+        
+        totalSpan.innerText = `$${total.toFixed(2)}`;
+        
+        // Add event listeners for quantity buttons
+        document.querySelectorAll('.qty-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const barcode = btn.dataset.barcode;
+                const delta = parseInt(btn.dataset.delta);
+                updateQuantity(barcode, delta);
+            });
+        });
+        
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const barcode = btn.dataset.barcode;
+                removeItem(barcode);
+            });
+        });
+    }
+
+    // Complete sale - save to Firestore
+    async function completeSale() {
+        if (cart.length === 0) {
+            showToast("Cart is empty. Add items first!");
+            return;
+        }
+        
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const saleData = {
+            timestamp: new Date(),
+            items: cart.map(item => ({
+                name: item.name,
+                barcode: item.barcode,
+                price: item.price,
+                quantity: item.quantity,
+                subtotal: item.price * item.quantity
+            })),
+            total: total,
+            status: "completed",
+            saleId: Date.now().toString()
+        };
+        
+        try {
+            const salesRef = collection(db, "sales");
+            await addDoc(salesRef, saleData);
+            showToast(`✅ Sale completed! Total: $${total.toFixed(2)}`);
+            console.log("Sale saved to Firestore:", saleData);
+            clearCart();
+        } catch (error) {
+            console.error("Error saving sale:", error);
+            showToast("Failed to save sale: " + error.message);
+        }
+    }
+
+    // Barcode scanner functions
+    function startScanner() {
+        const interactiveElem = document.getElementById("interactive");
+        const placeholderMsg = document.getElementById("scannerPlaceholderMsg");
+        
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: interactiveElem,
+                constraints: {
+                    facingMode: "environment"
+                }
+            },
+            decoder: {
+                readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader", "upc_e_reader"]
+            }
+        }, function(err) {
+            if (err) {
+                console.error("Scanner init error:", err);
+                showToast("Camera error or permission denied");
+                scannerActive = false;
+                document.getElementById("toggleScannerBtn").innerHTML = '<i class="fas fa-play"></i> Start Scanner';
+                return;
+            }
+            Quagga.start();
+            scannerActive = true;
+            interactiveElem.style.display = "block";
+            placeholderMsg.style.display = "none";
+            document.getElementById("toggleScannerBtn").innerHTML = '<i class="fas fa-stop"></i> Stop Scanner';
+            showToast("Scanner active, point camera at barcode");
+            Quagga.onDetected(onBarcodeDetected);
+        });
+    }
+    
+    function stopScanner() {
+        if (scannerInitialized) {
+            Quagga.stop();
+        }
+        scannerActive = false;
+        document.getElementById("interactive").style.display = "none";
+        document.getElementById("scannerPlaceholderMsg").style.display = "block";
+        document.getElementById("toggleScannerBtn").innerHTML = '<i class="fas fa-play"></i> Start Scanner';
+        showToast("Scanner stopped");
+    }
+    
+    function onBarcodeDetected(result) {
+        if (result && result.codeResult) {
+            const barcode = result.codeResult.code;
+            Quagga.offDetected(onBarcodeDetected);
+            stopScanner();
+            processBarcode(barcode);
+        }
+    }
+    
+    function processBarcode(barcode) {
+        const product = productsArray.find(p => p.barcode === barcode);
+        if (product) {
+            addToCart(product);
+        } else {
+            showToast(`❌ Barcode "${barcode}" not found in database`);
+        }
+    }
+    
+    function manualLookup() {
+        const barcode = document.getElementById("manualBarcode").value.trim();
+        if (barcode) {
+            processBarcode(barcode);
+            document.getElementById("manualBarcode").value = "";
+        } else {
+            showToast("Enter a barcode number");
+        }
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function showToast(msg) {
+        let toast = document.querySelector(".toast-msg");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.className = "toast-msg";
+            document.body.appendChild(toast);
+        }
+        toast.innerText = msg;
+        toast.style.opacity = "1";
+        setTimeout(() => {
+            toast.style.opacity = "0";
+        }, 2500);
+    }
+    
+    // Event listeners
+    document.getElementById("toggleScannerBtn").addEventListener("click", () => {
+        if (scannerActive) {
+            stopScanner();
+        } else {
+            startScanner();
+        }
+    });
+    
+    document.getElementById("manualLookupBtn").addEventListener("click", manualLookup);
+    document.getElementById("checkoutBtn").addEventListener("click", completeSale);
+    document.getElementById("clearCartBtn").addEventListener("click", clearCart);
+    document.getElementById("addSampleProductsBtn").addEventListener("click", addSampleProducts);
+    
+    document.getElementById("manualBarcode").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") manualLookup();
+    });
+    
+    // Initialize - load products from Firestore
+    console.log("Starting POS system with Firebase...");
+    fetchProductsFromFirestore();
+    renderCart();
+</script>
+</body>
+</html>
