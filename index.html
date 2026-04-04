@@ -935,7 +935,8 @@
                 mode: null,
                 viewportId: null,
                 instance: null,
-                pauseUntil: 0
+                pauseUntil: 0,
+                processing: false
             }
         };
 
@@ -1988,6 +1989,7 @@
             state.scanner.viewportId = null;
             state.scanner.instance = null;
             state.scanner.pauseUntil = 0;
+            state.scanner.processing = false;
 
             if (showMessage) {
                 showToast("Scanner stopped");
@@ -1996,7 +1998,7 @@
 
         function onCodeDetected(decodedText) {
             const now = Date.now();
-            if (now < state.scanner.pauseUntil) {
+            if (state.scanner.processing || now < state.scanner.pauseUntil) {
                 return;
             }
 
@@ -2007,12 +2009,13 @@
                 return;
             }
 
+            state.scanner.processing = true;
             state.scanner.pauseUntil = now + 1500;
+            stopScanner(false);
 
             if (mode === "pos") {
                 handlePosLookup(code, true);
             } else if (mode === "catalog") {
-                stopScanner(false);
                 handleCatalogLookup(code);
             }
         }
@@ -2061,6 +2064,7 @@
                 state.scanner.viewportId = targetId;
                 state.scanner.instance = scannerInstance;
                 state.scanner.pauseUntil = 0;
+                state.scanner.processing = false;
 
                 setScannerButtonState("togglePosScannerBtn", mode === "pos");
                 setScannerButtonState("toggleCatalogScannerBtn", mode === "catalog");
