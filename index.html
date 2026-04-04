@@ -199,11 +199,16 @@
         }
 
         .scanner-stage {
+            display: none;
             background: #24170d;
             border-radius: 24px;
             min-height: 240px;
             overflow: hidden;
             position: relative;
+        }
+
+        .scanner-stage.active {
+            display: block;
         }
 
         .scanner-stage video,
@@ -612,6 +617,18 @@
             z-index: 9999;
         }
 
+        .toast.success {
+            background: #166534;
+        }
+
+        .toast.error {
+            background: #991b1b;
+        }
+
+        .toast.info {
+            background: #1f2937;
+        }
+
         .toast.show {
             opacity: 1;
         }
@@ -681,27 +698,20 @@
                             <h2><i class="fas fa-barcode"></i> Scan Product For Sale</h2>
                             <div class="inline-actions">
                                 <button id="togglePosScannerBtn" class="btn-primary">
-                                    <i class="fas fa-camera"></i> Start Scanner
+                                    <i class="fas fa-camera"></i> Open Camera
                                 </button>
                             </div>
                         </div>
                         <div class="card-body">
                             <div class="scanner-shell">
-                                <div id="posScannerViewport" class="scanner-stage">
-                                    <div class="scanner-placeholder">
-                                        <div>
-                                            <i class="fas fa-barcode" style="font-size: 2rem;"></i>
-                                            <p>Ready to scan products for checkout.</p>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div id="posScannerViewport" class="scanner-stage"></div>
                                 <div class="manual-input">
                                     <input id="posManualBarcode" type="text" placeholder="Enter barcode manually">
                                     <button id="posManualLookupBtn" class="btn-secondary">
                                         <i class="fas fa-plus"></i> Add To Cart
                                     </button>
                                 </div>
-                                <p class="muted">When a product is scanned, its details appear here and it is added to the cart automatically.</p>
+                                <p class="muted">Tap Open Camera to scan one barcode. When a product is scanned, its details appear here and it is added to the cart automatically.</p>
                             </div>
                         </div>
                     </div>
@@ -782,20 +792,13 @@
                             <h2><i class="fas fa-camera-retro"></i> Scan Or Enter Product Barcode</h2>
                             <div class="inline-actions">
                                 <button id="toggleCatalogScannerBtn" class="btn-primary">
-                                    <i class="fas fa-camera"></i> Start Scanner
+                                    <i class="fas fa-camera"></i> Open Camera
                                 </button>
                             </div>
                         </div>
                         <div class="card-body">
                             <div class="scanner-shell">
-                                <div id="catalogScannerViewport" class="scanner-stage">
-                                    <div class="scanner-placeholder">
-                                        <div>
-                                            <i class="fas fa-barcode" style="font-size: 2rem;"></i>
-                                            <p>Scan a barcode to load existing details or prepare a new product.</p>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div id="catalogScannerViewport" class="scanner-stage"></div>
                                 <div class="manual-input">
                                     <input id="catalogManualBarcode" type="text" placeholder="Enter barcode for product setup">
                                     <button id="catalogManualLookupBtn" class="btn-secondary">
@@ -921,15 +924,12 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const LOCAL_PRODUCTS_KEY = "kristel_pos_products";
-        const LOCAL_SALES_KEY = "kristel_pos_sales";
 
         const state = {
             products: [],
             cart: [],
             lastSale: null,
             currentPage: "posPage",
-            firestoreBlocked: false,
             scanner: {
                 active: false,
                 mode: null,
@@ -952,9 +952,10 @@
             return `PHP ${amount.toFixed(2)}`;
         }
 
-        function showToast(message) {
+        function showToast(message, type = "info") {
             const toast = document.getElementById("toast");
             toast.textContent = message;
+            toast.className = `toast ${type}`;
             toast.classList.add("show");
             clearTimeout(showToast.timer);
             showToast.timer = setTimeout(() => {
@@ -983,6 +984,16 @@
 
         function updatePrintButton() {
             document.getElementById("printReceiptBtn").disabled = !state.lastSale;
+        }
+
+        function setButtonLoading(buttonId, isLoading, idleHtml, loadingHtml) {
+            const button = document.getElementById(buttonId);
+            if (!button) {
+                return;
+            }
+
+            button.disabled = isLoading;
+            button.innerHTML = isLoading ? loadingHtml : idleHtml;
         }
 
         function updateProductCount() {
@@ -1051,94 +1062,28 @@
             };
         }
 
-        function isPermissionError(error) {
-            const message = String(error?.message || "").toLowerCase();
-            return error?.code === "permission-denied"
-                || message.includes("missing or insufficient permissions")
-                || message.includes("permission");
-        }
-
-        function readLocalJson(key) {
-            try {
-                return JSON.parse(localStorage.getItem(key) || "[]");
-            } catch (error) {
-                console.error(`Failed to read local storage key ${key}:`, error);
-                return [];
-            }
-        }
-
-        function writeLocalJson(key, value) {
-            localStorage.setItem(key, JSON.stringify(value));
-        }
-
-        function getLocalProducts() {
-            return readLocalJson(LOCAL_PRODUCTS_KEY).map((item) => normalizeProductRecord(item, item.scanCode || item.barcode || ""));
-        }
-
-        function upsertLocalProduct(product) {
-            const products = getLocalProducts();
-            const normalized = normalizeProductRecord(product, product.scanCode || product.barcode || "");
-            const index = products.findIndex((item) => item.scanCode === normalized.scanCode);
-
-            if (index >= 0) {
-                products[index] = { ...products[index], ...normalized };
-            } else {
-                products.push(normalized);
-            }
-
-            writeLocalJson(LOCAL_PRODUCTS_KEY, products);
-        }
-
-        function removeLocalProduct(code) {
-            const products = getLocalProducts().filter((item) => item.scanCode !== code);
-            writeLocalJson(LOCAL_PRODUCTS_KEY, products);
-        }
-
-        function appendLocalSale(sale) {
-            const sales = readLocalJson(LOCAL_SALES_KEY);
-            sales.push({
-                ...sale,
-                createdAtText: new Date().toLocaleString()
-            });
-            writeLocalJson(LOCAL_SALES_KEY, sales);
-        }
-
         async function fetchProducts() {
             setConnectionStatus("", "Loading products...");
-            let items = [];
-            let firestoreLoaded = false;
 
             try {
                 const snapshot = await getDocs(collection(db, "products"));
+                const items = [];
                 snapshot.forEach((productDoc) => {
                     items.push(normalizeProductRecord(productDoc.data(), productDoc.id));
                 });
-                firestoreLoaded = true;
-                state.firestoreBlocked = false;
+                state.products = items.sort((a, b) => a.name.localeCompare(b.name));
+                updateProductCount();
+                renderCatalogProducts();
+                renderPosSearchResults();
                 setConnectionStatus("connected", "Connected");
             } catch (error) {
                 console.error("Failed to fetch products:", error);
-                if (isPermissionError(error)) {
-                    state.firestoreBlocked = true;
-                    setConnectionStatus("error", "Using local save");
-                    showToast("Firestore is blocked. Using local browser save.");
-                } else {
-                    setConnectionStatus("error", "Connection error");
-                    showToast(`Failed to load products: ${error.message}`);
-                }
-            }
-
-            const merged = new Map();
-            items.forEach((product) => merged.set(product.scanCode, product));
-            getLocalProducts().forEach((product) => merged.set(product.scanCode, product));
-
-            state.products = Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
-            updateProductCount();
-            renderCatalogProducts();
-            renderPosSearchResults();
-
-            if (!firestoreLoaded && !state.products.length) {
-                setConnectionStatus("error", "No saved products");
+                state.products = [];
+                updateProductCount();
+                renderCatalogProducts();
+                renderPosSearchResults();
+                setConnectionStatus("error", "Connection error");
+                showToast(`Failed to load products: ${error.message}`, "error");
             }
         }
 
@@ -1638,9 +1583,16 @@
             }
 
             if (!Number.isFinite(price) || price < 0) {
-                showToast("Enter a valid price");
+                showToast("Enter a valid selling price", "error");
                 return;
             }
+
+            setButtonLoading(
+                "saveCatalogProductBtn",
+                true,
+                '<i class="fas fa-floppy-disk"></i> Save Product',
+                '<i class="fas fa-spinner fa-spin"></i> Saving...'
+            );
 
             try {
                 const existing = await lookupProduct(scanCode);
@@ -1666,30 +1618,17 @@
                 fillCatalogForm({ scanCode, name, category, price, stock, unit, notes });
                 document.getElementById("catalogLookupNote").textContent =
                     `Saved ${name}. This barcode is now ready to use on the POS page, with total quantity ${stock} and selling price ${formatCurrency(price)}.`;
-                showToast("Product saved successfully");
+                showToast("Product saved successfully", "success");
             } catch (error) {
                 console.error("Failed to save product:", error);
-                if (isPermissionError(error)) {
-                    upsertLocalProduct({
-                        scanCode,
-                        barcode: scanCode,
-                        codeType: detectCodeType(scanCode),
-                        name,
-                        category,
-                        price,
-                        stock,
-                        unit,
-                        notes
-                    });
-                    state.firestoreBlocked = true;
-                    await fetchProducts();
-                    fillCatalogForm({ scanCode, name, category, price, stock, unit, notes });
-                    document.getElementById("catalogLookupNote").textContent =
-                        `Saved ${name} locally in this browser. Firestore permission is blocked, but this barcode will still work in the POS here.`;
-                    showToast("Product saved locally in this browser");
-                } else {
-                    showToast(`Failed to save product: ${error.message}`);
-                }
+                showToast(`Failed to save product: ${error.message}`, "error");
+            } finally {
+                setButtonLoading(
+                    "saveCatalogProductBtn",
+                    false,
+                    '<i class="fas fa-floppy-disk"></i> Save Product',
+                    '<i class="fas fa-spinner fa-spin"></i> Saving...'
+                );
             }
         }
 
@@ -1707,16 +1646,7 @@
                 showToast("Demo products added");
             } catch (error) {
                 console.error("Failed to seed demo products:", error);
-                if (isPermissionError(error)) {
-                    demoProducts.forEach((product) => {
-                        upsertLocalProduct(product);
-                    });
-                    state.firestoreBlocked = true;
-                    await fetchProducts();
-                    showToast("Demo products saved locally in this browser");
-                } else {
-                    showToast(`Failed to add demo products: ${error.message}`);
-                }
+                showToast(`Failed to add demo products: ${error.message}`);
             }
         }
 
@@ -1734,24 +1664,13 @@
                 showToast("Product deleted");
             } catch (error) {
                 console.error("Failed to delete product:", error);
-                if (isPermissionError(error)) {
-                    removeLocalProduct(code);
-                    state.cart = state.cart.filter((item) => item.scanCode !== code);
-                    await fetchProducts();
-                    renderCart();
-                    if (document.getElementById("catalogBarcode").value.trim() === code) {
-                        resetCatalogForm();
-                    }
-                    showToast("Product deleted from local browser storage");
-                } else {
-                    showToast(`Failed to delete product: ${error.message}`);
-                }
+                showToast(`Failed to delete product: ${error.message}`);
             }
         }
 
         async function completeSale() {
             if (!state.cart.length) {
-                showToast("Cart is empty");
+                showToast("Cart is empty", "error");
                 return;
             }
 
@@ -1760,14 +1679,21 @@
             const change = cashReceived - total;
 
             if (!Number.isFinite(cashReceived) || cashReceived <= 0) {
-                showToast("Enter cash received first");
+                showToast("Enter cash received first", "error");
                 return;
             }
 
             if (change < 0) {
-                showToast(`Customer still lacks ${formatCurrency(Math.abs(change))}`);
+                showToast(`Customer still lacks ${formatCurrency(Math.abs(change))}`, "error");
                 return;
             }
+
+            setButtonLoading(
+                "checkoutBtn",
+                true,
+                '<i class="fas fa-check-circle"></i> Complete Sale',
+                '<i class="fas fa-spinner fa-spin"></i> Saving Sale...'
+            );
 
             const saleData = {
                 saleId: `SALE-${Date.now()}`,
@@ -1827,46 +1753,17 @@
                 const result = document.getElementById("posLookupResult");
                 result.className = "lookup-result empty";
                 result.textContent = "Sale completed. Scan or enter the next product to start a new cart.";
-                showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`);
+                showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`, "success");
             } catch (error) {
                 console.error("Failed to complete sale:", error);
-                if (isPermissionError(error)) {
-                    for (const item of state.cart) {
-                        const currentProduct = await lookupProduct(item.scanCode);
-                        if (!currentProduct) {
-                            continue;
-                        }
-
-                        upsertLocalProduct({
-                            ...currentProduct,
-                            stock: Math.max(0, Number(currentProduct.stock || 0) - item.quantity)
-                        });
-                    }
-
-                    appendLocalSale({
-                        ...saleData,
-                        createdAtText: new Date().toLocaleString()
-                    });
-
-                    state.lastSale = {
-                        ...saleData,
-                        createdAtText: new Date().toLocaleString(),
-                        items: state.cart.map((item) => ({
-                            ...item,
-                            lineTotal: item.quantity * item.price
-                        }))
-                    };
-                    state.firestoreBlocked = true;
-                    updatePrintButton();
-                    await fetchProducts();
-                    clearCart({ silent: true });
-                    const result = document.getElementById("posLookupResult");
-                    result.className = "lookup-result empty";
-                    result.textContent = "Sale saved locally. Scan or enter the next product to start a new cart.";
-                    showToast("Sale saved locally in this browser");
-                } else {
-                    showToast(`Failed to save sale: ${error.message}`);
-                }
+                showToast(`Failed to save sale: ${error.message}`, "error");
+            } finally {
+                setButtonLoading(
+                    "checkoutBtn",
+                    false,
+                    '<i class="fas fa-check-circle"></i> Complete Sale',
+                    '<i class="fas fa-spinner fa-spin"></i> Saving Sale...'
+                );
             }
         }
 
@@ -1942,20 +1839,14 @@
             }
 
             button.innerHTML = active
-                ? '<i class="fas fa-stop"></i> Stop Scanner'
-                : '<i class="fas fa-camera"></i> Start Scanner';
+                ? '<i class="fas fa-times"></i> Close Camera'
+                : '<i class="fas fa-camera"></i> Open Camera';
         }
 
         function resetScannerViewport(viewportId, message) {
             const viewport = document.getElementById(viewportId);
-            viewport.innerHTML = `
-                <div class="scanner-placeholder">
-                    <div>
-                        <i class="fas fa-barcode" style="font-size: 2rem;"></i>
-                        <p>${escapeHtml(message)}</p>
-                    </div>
-                </div>
-            `;
+            viewport.classList.remove("active");
+            viewport.innerHTML = "";
         }
 
         function stopScanner(showMessage = true) {
@@ -1992,7 +1883,7 @@
             state.scanner.processing = false;
 
             if (showMessage) {
-                showToast("Scanner stopped");
+                showToast("Camera closed", "info");
             }
         }
 
@@ -2028,12 +1919,13 @@
             }
 
             if (typeof Html5Qrcode === "undefined") {
-                showToast("Scanner library is still loading. Please try again.");
+                showToast("Scanner library is still loading. Please try again.", "error");
                 return;
             }
 
             const viewport = document.getElementById(targetId);
             viewport.innerHTML = "";
+            viewport.classList.add("active");
 
             const scannerInstance = new Html5Qrcode(targetId);
 
@@ -2068,11 +1960,11 @@
 
                 setScannerButtonState("togglePosScannerBtn", mode === "pos");
                 setScannerButtonState("toggleCatalogScannerBtn", mode === "catalog");
-                showToast("Camera scanner is active");
+                showToast("Camera opened. Scan one barcode.", "success");
             } catch (error) {
                 console.error("Scanner error:", error);
                 resetScannerViewport(targetId, "Camera access failed. Check permission and try again.");
-                showToast("Camera error or permission denied");
+                showToast("Camera error or permission denied", "error");
             }
         }
 
