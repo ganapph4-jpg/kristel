@@ -1274,6 +1274,12 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="manual-input" style="margin-bottom: 14px;">
+                            <input id="lowStockThresholdInput" type="number" min="0" step="1" placeholder="Low stock minimum">
+                            <button id="saveLowStockThresholdBtn" class="btn-ghost">
+                                <i class="fas fa-pen"></i> Update
+                            </button>
+                        </div>
                         <div id="lowStockSummary" class="lookup-result empty">
                             Low stock summary will appear here after loading from Firestore.
                         </div>
@@ -1474,6 +1480,7 @@
             beepReady: false,
             audioContext: null,
             catalogImageData: "",
+            lowStockThreshold: 3,
             scanner: {
                 active: false,
                 mode: null,
@@ -1538,22 +1545,29 @@
             }
 
             const context = state.audioContext;
-            const oscillator = context.createOscillator();
-            const gainNode = context.createGain();
             const startTime = context.currentTime;
 
-            oscillator.type = "sine";
-            oscillator.frequency.setValueAtTime(980, startTime);
-            oscillator.frequency.exponentialRampToValueAtTime(760, startTime + 0.12);
+            const playTone = (frequency, offset) => {
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                const toneStart = startTime + offset;
 
-            gainNode.gain.setValueAtTime(0.0001, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.18, startTime + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.16);
+                oscillator.type = "square";
+                oscillator.frequency.setValueAtTime(frequency, toneStart);
+                oscillator.frequency.exponentialRampToValueAtTime(Math.max(420, frequency - 180), toneStart + 0.12);
 
-            oscillator.connect(gainNode);
-            gainNode.connect(context.destination);
-            oscillator.start(startTime);
-            oscillator.stop(startTime + 0.16);
+                gainNode.gain.setValueAtTime(0.0001, toneStart);
+                gainNode.gain.exponentialRampToValueAtTime(0.32, toneStart + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, toneStart + 0.18);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                oscillator.start(toneStart);
+                oscillator.stop(toneStart + 0.18);
+            };
+
+            playTone(1180, 0);
+            playTone(980, 0.09);
         }
 
         function escapeHtml(value) {
@@ -1645,16 +1659,44 @@
 
         function getLowStockMarkup(stock) {
             const qty = Number(stock || 0);
+            const threshold = Number(state.lowStockThreshold || 0);
 
             if (qty <= 0) {
                 return `<div class="stock-warning out"><i class="fas fa-circle-exclamation"></i> Out of stock</div>`;
             }
 
-            if (qty <= 3) {
+            if (qty <= threshold) {
                 return `<div class="stock-warning low"><i class="fas fa-triangle-exclamation"></i> Only ${qty} left</div>`;
             }
 
             return "";
+        }
+
+        function syncLowStockThresholdInput() {
+            const input = document.getElementById("lowStockThresholdInput");
+            if (input) {
+                input.value = String(state.lowStockThreshold);
+            }
+        }
+
+        function saveLowStockThreshold() {
+            const input = document.getElementById("lowStockThresholdInput");
+            const nextValue = Number(input.value);
+
+            if (!Number.isFinite(nextValue) || nextValue < 0) {
+                showToast("Enter a valid low stock minimum", "error");
+                syncLowStockThresholdInput();
+                return;
+            }
+
+            state.lowStockThreshold = Math.floor(nextValue);
+            renderOwnerReports();
+            renderPosSearchResults();
+            renderManualBarcodeMatches("pos");
+            renderManualBarcodeMatches("catalog");
+            renderCart();
+            syncCatalogPreviewFromForm();
+            showToast(`Low stock minimum updated to ${state.lowStockThreshold}`, "success");
         }
         function switchPage(pageId) {
             state.currentPage = pageId;
@@ -1960,31 +2002,33 @@
             const target = document.getElementById("lowStockList");
             const summaryTarget = document.getElementById("lowStockSummary");
             const countBadge = document.getElementById("lowStockCountBadge");
+            const threshold = Number(state.lowStockThreshold || 0);
             const lowStockProducts = state.products
-                .filter((product) => Number(product.stock || 0) <= 3)
+                .filter((product) => Number(product.stock || 0) <= threshold)
                 .sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0) || a.name.localeCompare(b.name));
 
             countBadge.textContent = String(lowStockProducts.length);
+            syncLowStockThresholdInput();
 
             if (!lowStockProducts.length) {
                 target.innerHTML = `<div class="empty-state">No low stock products right now.</div>`;
                 summaryTarget.className = "lookup-result";
                 summaryTarget.innerHTML = `
                     <div class="lookup-title">Stock looks good</div>
-                    <div class="muted">No products are currently at 3 or below.</div>
+                    <div class="muted">No products are currently at ${threshold} or below.</div>
                 `;
                 return;
             }
 
             const outCount = lowStockProducts.filter((product) => Number(product.stock || 0) <= 0).length;
-            const criticalCount = lowStockProducts.filter((product) => Number(product.stock || 0) > 0 && Number(product.stock || 0) <= 3).length;
+            const criticalCount = lowStockProducts.filter((product) => Number(product.stock || 0) > 0 && Number(product.stock || 0) <= threshold).length;
 
             summaryTarget.className = "lookup-result";
             summaryTarget.innerHTML = `
                 <div class="lookup-title">${lowStockProducts.length} low stock products found</div>
                 <div class="lookup-meta">
                     <span><i class="fas fa-circle-exclamation"></i> Out of stock: ${outCount}</span>
-                    <span><i class="fas fa-triangle-exclamation"></i> Only 1 to 3 left: ${criticalCount}</span>
+                    <span><i class="fas fa-triangle-exclamation"></i> Only 1 to ${threshold} left: ${criticalCount}</span>
                 </div>
                 <div class="muted">Click Show All Low Stocks to open the full popup list.</div>
             `;
@@ -3137,6 +3181,7 @@
         document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
         document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
         document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
+        document.getElementById("saveLowStockThresholdBtn").addEventListener("click", saveLowStockThreshold);
 
         document.getElementById("togglePosScannerBtn").addEventListener("click", () => {
             if (state.scanner.active && state.scanner.mode === "pos") {
@@ -3230,6 +3275,11 @@
                 submitOwnerPassword();
             }
         });
+        document.getElementById("lowStockThresholdInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveLowStockThreshold();
+            }
+        });
 
         document.getElementById("saveCatalogProductBtn").addEventListener("click", () => saveCatalogProduct());
         document.getElementById("saveCatalogAndScanBtn").addEventListener("click", () => saveCatalogProduct({ scanNext: true }));
@@ -3289,6 +3339,7 @@
         renderPosLookup(null, "");
         renderPosSearchResults();
         renderOwnerReports();
+        syncLowStockThresholdInput();
         updatePrintButton();
         fetchProducts();
         fetchSales({ silent: true });
