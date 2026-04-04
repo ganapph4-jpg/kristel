@@ -318,6 +318,49 @@
             grid-column: 1 / -1;
         }
 
+        .image-field {
+            border: 1px dashed #e7d2bb;
+            border-radius: 20px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.75);
+            display: grid;
+            gap: 12px;
+        }
+
+        .image-field-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .image-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 18px;
+            border: 1px dashed #efd7be;
+            background: transparent;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: transparent;
+        }
+
+        .image-preview.empty {
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 10px;
+        }
+
         label {
             font-size: 0.88rem;
             font-weight: 700;
@@ -362,6 +405,32 @@
         .lookup-title {
             font-size: 1.18rem;
             font-weight: 800;
+        }
+
+        .result-product {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .result-media {
+            width: 88px;
+            height: 88px;
+            border-radius: 18px;
+            border: 1px solid #efd7be;
+            background: #fff;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            color: #b45309;
+        }
+
+        .result-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .lookup-meta {
@@ -420,6 +489,26 @@
 
         .cart-name {
             font-weight: 800;
+        }
+
+        .cart-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            border: 1px solid #efd7be;
+            background: #fff;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            color: #b45309;
+            flex-shrink: 0;
+        }
+
+        .cart-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .cart-sub {
@@ -1221,6 +1310,24 @@
                 Scan a barcode to show the product name, total quantity, and selling price here.
             </div>
             <div class="field-grid">
+                <div class="field full">
+                    <label>Product Photo</label>
+                    <div class="image-field">
+                        <div class="image-field-head">
+                            <div class="muted">Add a small photo of the item.</div>
+                            <div class="button-row">
+                                <button id="openCatalogPhotoBtn" type="button" class="btn-ghost btn-small">
+                                    <i class="fas fa-camera"></i> Add Photo
+                                </button>
+                                <button id="removeCatalogPhotoBtn" type="button" class="btn-danger btn-small">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                        <input id="catalogPhotoInput" type="file" accept="image/*" capture="environment" hidden>
+                        <div id="catalogImagePreview" class="image-preview empty">No photo</div>
+                    </div>
+                </div>
                 <div class="field">
                     <label for="catalogBarcode">Barcode</label>
                     <input id="catalogBarcode" type="text" placeholder="Barcode value">
@@ -1366,6 +1473,7 @@
             ownerUnlocked: false,
             beepReady: false,
             audioContext: null,
+            catalogImageData: "",
             scanner: {
                 active: false,
                 mode: null,
@@ -1592,8 +1700,74 @@
                 price: Number(data.price || 0),
                 stock: Number(data.stock || 0),
                 unit: data.unit || "",
-                notes: data.notes || ""
+                notes: data.notes || "",
+                imageData: data.imageData || ""
             };
+        }
+
+        function setCatalogImagePreview(imageData = "") {
+            const preview = document.getElementById("catalogImagePreview");
+            state.catalogImageData = imageData || "";
+
+            if (!state.catalogImageData) {
+                preview.className = "image-preview empty";
+                preview.innerHTML = "No photo";
+                return;
+            }
+
+            preview.className = "image-preview";
+            preview.innerHTML = `<img src="${state.catalogImageData}" alt="Product photo preview">`;
+        }
+
+        function removeCatalogPhoto() {
+            document.getElementById("catalogPhotoInput").value = "";
+            setCatalogImagePreview("");
+            syncCatalogPreviewFromForm();
+        }
+
+        async function compressCatalogImage(file) {
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Failed to read image"));
+                reader.readAsDataURL(file);
+            });
+
+            const image = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error("Failed to load image"));
+                img.src = dataUrl;
+            });
+
+            const canvas = document.createElement("canvas");
+            const maxSide = 220;
+            const scale = Math.min(maxSide / image.width, maxSide / image.height, 1);
+            const width = Math.max(1, Math.round(image.width * scale));
+            const height = Math.max(1, Math.round(image.height * scale));
+            canvas.width = width;
+            canvas.height = height;
+
+            const context = canvas.getContext("2d");
+            context.clearRect(0, 0, width, height);
+            context.drawImage(image, 0, 0, width, height);
+            return canvas.toDataURL("image/webp", 0.82);
+        }
+
+        async function handleCatalogPhotoChange(file) {
+            if (!file) {
+                return;
+            }
+
+            try {
+                const compressedImage = await compressCatalogImage(file);
+                setCatalogImagePreview(compressedImage);
+                syncCatalogPreviewFromForm();
+                showToast("Product photo added", "success");
+            } catch (error) {
+                console.error("Photo processing failed:", error);
+                showToast(`Failed to process photo: ${error.message}`, "error");
+            }
         }
 
         function getBarcodeMatches(query, limit = 8) {
@@ -1915,7 +2089,15 @@
 
             target.className = "lookup-result";
             target.innerHTML = `
-                <div class="lookup-title">${escapeHtml(product.name)}</div>
+                <div class="result-product">
+                    <div class="result-media">
+                        ${product.imageData ? `<img src="${product.imageData}" alt="${escapeHtml(product.name)}">` : '<i class="fas fa-box-open"></i>'}
+                    </div>
+                    <div>
+                        <div class="lookup-title">${escapeHtml(product.name)}</div>
+                        <div class="muted">Scanned item ready for sale.</div>
+                    </div>
+                </div>
                 <div class="lookup-meta">
                     <span><i class="fas fa-barcode"></i> ${escapeHtml(product.scanCode)}</span>
                     <span><i class="fas fa-expand"></i> ${escapeHtml(getCodeTypeLabel(product.codeType))}</span>
@@ -1953,6 +2135,7 @@
             }
 
             const previewMarkup = `
+                ${product.imageData ? `<div class="image-preview"><img src="${product.imageData}" alt="${escapeHtml(product.name || "Product")}"></div>` : ""}
                 <div class="lookup-title">${escapeHtml(product.name || "Unnamed product")}</div>
                 <div class="lookup-meta">
                     <span><i class="fas fa-barcode"></i> ${escapeHtml(product.scanCode)}</span>
@@ -1981,7 +2164,8 @@
                 price: Number.isFinite(rawPrice) ? rawPrice : 0,
                 stock: Number.isFinite(rawStock) ? rawStock : 0,
                 unit: document.getElementById("catalogUnit").value.trim(),
-                notes: document.getElementById("catalogNotes").value.trim()
+                notes: document.getElementById("catalogNotes").value.trim(),
+                imageData: state.catalogImageData || ""
             };
         }
 
@@ -2020,7 +2204,8 @@
                     name: product.name,
                     category: product.category || "",
                     price: Number(product.price || 0),
-                    quantity: 1
+                    quantity: 1,
+                    imageData: product.imageData || ""
                 });
             }
 
@@ -2091,9 +2276,14 @@
                 return `
                     <div class="cart-item">
                         <div class="cart-item-row">
-                            <div>
-                                <div class="cart-name">${escapeHtml(item.name)}</div>
-                                <div class="cart-sub">${escapeHtml(item.scanCode)} | Barcode${item.category ? ` | ${escapeHtml(item.category)}` : ""}</div>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <div class="cart-thumb">
+                                    ${item.imageData ? `<img src="${item.imageData}" alt="${escapeHtml(item.name)}">` : '<i class="fas fa-box-open"></i>'}
+                                </div>
+                                <div>
+                                    <div class="cart-name">${escapeHtml(item.name)}</div>
+                                    <div class="cart-sub">${escapeHtml(item.scanCode)} | Barcode${item.category ? ` | ${escapeHtml(item.category)}` : ""}</div>
+                                </div>
                             </div>
                             <div class="price-pill">${formatCurrency(lineTotal)}</div>
                         </div>
@@ -2192,6 +2382,7 @@
             document.getElementById("catalogStock").value = product?.stock ?? "";
             document.getElementById("catalogUnit").value = product?.unit || "";
             document.getElementById("catalogNotes").value = product?.notes || "";
+            setCatalogImagePreview(product?.imageData || "");
             syncCatalogPreviewFromForm();
         }
 
@@ -2230,6 +2421,7 @@
                 <div class="product-item" data-product-code="${escapeHtml(product.scanCode)}">
                     <div class="product-item-top">
                         <div>
+                            ${product.imageData ? `<div class="image-preview" style="margin-bottom: 8px; width: 72px; height: 72px;"><img src="${product.imageData}" alt="${escapeHtml(product.name)}"></div>` : ""}
                             <h4>${escapeHtml(product.name)}</h4>
                             <div class="muted">${escapeHtml(product.scanCode)} | Barcode</div>
                         </div>
@@ -2353,7 +2545,8 @@
                     price: "",
                     stock: "",
                     unit: "",
-                    notes: ""
+                    notes: "",
+                    imageData: ""
                 });
                 renderCatalogPreview(null, cleanCode);
                 document.getElementById("catalogLookupNote").textContent =
@@ -2376,6 +2569,7 @@
             const stock = Number(document.getElementById("catalogStock").value || 0);
             const unit = document.getElementById("catalogUnit").value.trim();
             const notes = document.getElementById("catalogNotes").value.trim();
+            const imageData = state.catalogImageData || "";
 
             if (!scanCode) {
                 showToast("Barcode is required");
@@ -2406,6 +2600,7 @@
                     stock: Number.isFinite(stock) ? stock : 0,
                     unit,
                     notes,
+                    imageData,
                     updatedAt: serverTimestamp()
                 };
 
@@ -2415,7 +2610,7 @@
 
                 await setDoc(doc(db, "products", scanCode), payload, { merge: true });
                 await fetchProducts();
-                fillCatalogForm({ scanCode, name, category, price, stock, unit, notes });
+                fillCatalogForm({ scanCode, name, category, price, stock, unit, notes, imageData });
                 document.getElementById("catalogLookupNote").textContent =
                     `Saved ${name}. This barcode is now ready to use on the POS page, with total quantity ${stock} and selling price ${formatCurrency(price)}.`;
                 showToast(
@@ -3021,6 +3216,14 @@
         });
         document.getElementById("catalogManualBarcode").addEventListener("input", () => {
             renderManualBarcodeMatches("catalog");
+        });
+        document.getElementById("openCatalogPhotoBtn").addEventListener("click", () => {
+            document.getElementById("catalogPhotoInput").click();
+        });
+        document.getElementById("removeCatalogPhotoBtn").addEventListener("click", removeCatalogPhoto);
+        document.getElementById("catalogPhotoInput").addEventListener("change", async (event) => {
+            const [file] = event.target.files || [];
+            await handleCatalogPhotoChange(file);
         });
         document.getElementById("ownerPasswordInput").addEventListener("keypress", (event) => {
             if (event.key === "Enter") {
