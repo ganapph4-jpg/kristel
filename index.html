@@ -120,6 +120,18 @@
             border: 1px solid rgba(251, 146, 60, 0.18);
         }
 
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: inline-grid;
+            place-items: center;
+            background: #fff7ef;
+            color: #9a4f0f;
+            border: 1px solid rgba(251, 146, 60, 0.18);
+            font-size: 1rem;
+        }
+
         .nav-btn {
             border: none;
             border-radius: 18px;
@@ -162,7 +174,12 @@
         }
 
         .page-grid.catalog {
-            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            grid-template-columns: 1fr;
+        }
+
+        .page-grid.settings {
+            grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+            align-items: start;
         }
 
         .left-stack {
@@ -480,6 +497,116 @@
             overflow-y: auto;
         }
 
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            border: 1px solid #efd7be;
+            background: #fffdf9;
+            border-radius: 20px;
+            padding: 16px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .stat-value {
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: #8a4b0f;
+        }
+
+        .stat-card.sales .stat-value {
+            color: #166534;
+        }
+
+        .stat-card.transactions .stat-value {
+            color: #9a3412;
+        }
+
+        .stat-card.items .stat-value {
+            color: #1d4ed8;
+        }
+
+        .stat-card.average .stat-value {
+            color: #7c3aed;
+        }
+
+        .low-stock-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #fee2e2;
+            color: #991b1b;
+            font-weight: 900;
+        }
+
+        .report-list {
+            display: grid;
+            gap: 12px;
+            max-height: 720px;
+            overflow-y: auto;
+        }
+
+        .report-item {
+            border: 1px solid #efd7be;
+            background: #fffdf9;
+            border-radius: 20px;
+            padding: 16px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .report-item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: start;
+            flex-wrap: wrap;
+        }
+
+        .report-title {
+            font-size: 1.02rem;
+            font-weight: 800;
+        }
+
+        .report-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #7c4a16;
+            font-size: 0.9rem;
+        }
+
+        .owner-note {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: #fff7ef;
+            border: 1px solid #efd7be;
+            color: #8a4b0f;
+            font-size: 0.94rem;
+            margin-bottom: 14px;
+        }
+
+        .owner-password-error {
+            color: #991b1b;
+            font-size: 0.9rem;
+            min-height: 20px;
+        }
+
         .product-item {
             border: 1px solid #efd7be;
             background: #fffdf9;
@@ -695,7 +822,8 @@
 
         @media (max-width: 1080px) {
             .page-grid.pos,
-            .page-grid.catalog {
+            .page-grid.catalog,
+            .page-grid.settings {
                 grid-template-columns: 1fr;
             }
 
@@ -841,6 +969,9 @@
                 <button id="navCatalogBtn" class="nav-btn" data-page="catalogPage">
                     <span class="nav-label"><i class="fas fa-box-open"></i> Products</span>
                 </button>
+                <button id="openSettingsBtn" class="icon-btn" title="Owner Settings" aria-label="Owner Settings">
+                    <i class="fas fa-gear"></i>
+                </button>
             </div>
         </div>
 
@@ -856,10 +987,10 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body">
+                            <div class="card-body">
                             <div class="scanner-shell">
                                 <div class="catalog-note">
-                                    <i class="fas fa-camera"></i> Camera opens in a popup so you can scan without scrolling.
+                                    <i class="fas fa-camera"></i> Scan with camera or enter the barcode manually.
                                 </div>
                                 <div class="manual-input">
                                     <input id="posManualBarcode" type="text" placeholder="Enter barcode manually">
@@ -867,7 +998,10 @@
                                         <i class="fas fa-plus"></i> Add To Cart
                                     </button>
                                 </div>
-                                <p class="muted">Tap Open Camera to scan one barcode. When a product is scanned, its details appear here and it is added to the cart automatically.</p>
+                                <div id="posBarcodeMatches" class="search-results">
+                                    <div class="empty-state">Matching barcodes will appear here.</div>
+                                </div>
+                                <p class="muted">Scan a product to add it to the current sale.</p>
                             </div>
                         </div>
                     </div>
@@ -878,7 +1012,7 @@
                         </div>
                         <div class="card-body">
                             <div id="posLookupResult" class="lookup-result empty">
-                                Scan or enter a barcode to show the product details and price.
+                                Ready to scan a product.
                             </div>
                         </div>
                     </div>
@@ -955,7 +1089,7 @@
                         <div class="card-body">
                             <div class="scanner-shell">
                                 <div class="catalog-note">
-                                    <i class="fas fa-camera"></i> Camera opens in a popup so you can add products faster.
+                                    <i class="fas fa-camera"></i> Scan with camera or enter the barcode manually.
                                 </div>
                                 <div class="manual-input">
                                     <input id="catalogManualBarcode" type="text" placeholder="Enter barcode for product setup">
@@ -963,8 +1097,11 @@
                                         <i class="fas fa-search"></i> Load Product
                                     </button>
                                 </div>
+                                <div id="catalogBarcodeMatches" class="search-results">
+                                    <div class="empty-state">Matching barcodes will appear here.</div>
+                                </div>
                                 <div id="catalogLookupNote" class="catalog-note">
-                                    Scan a product first. If the barcode already exists, the product name will show and you can update the total quantity and selling price before saving.
+                                    Scan or enter a barcode to load or create a product.
                                 </div>
                             </div>
                         </div>
@@ -983,6 +1120,9 @@
                         <div class="card-header">
                             <h3><i class="fas fa-pen-to-square"></i> Product Setup Form</h3>
                             <div class="inline-actions">
+                                <button id="openSavedProductsBtn" class="btn-ghost">
+                                    <i class="fas fa-database"></i> Saved Products
+                                </button>
                                 <button id="openCatalogFormBtn" class="btn-secondary">
                                     <i class="fas fa-pen-to-square"></i> Open Form
                                 </button>
@@ -993,27 +1133,60 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section id="settingsPage" class="page-panel">
+            <div class="owner-note">
+                <i class="fas fa-shield-halved"></i> Owner settings shows daily sales, sales history, and all low-stock products in one place.
+            </div>
+            <div class="page-grid settings">
+                <div class="left-stack">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-chart-line"></i> Daily Sales Dashboard</h2>
+                            <div class="inline-actions">
+                                <button id="refreshOwnerReportsBtn" class="btn-ghost">
+                                    <i class="fas fa-arrows-rotate"></i> Refresh Reports
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="dailySalesStats" class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-label">Today's Sales</div>
+                                    <div class="stat-value">PHP 0.00</div>
+                                    <div class="muted">Waiting for sales data.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-clock-rotate-left"></i> Sales History</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="salesHistoryList" class="report-list">
+                                <div class="empty-state">Sales history will appear here after loading from Firestore.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card">
                     <div class="card-header">
-                        <h3><i class="fas fa-database"></i> Saved Products</h3>
+                        <h3><i class="fas fa-triangle-exclamation"></i> Low Stock Products</h3>
                         <div class="inline-actions">
-                            <div class="badge badge-count">
-                                <i class="fas fa-boxes-stacked"></i>
-                                <span id="productCountBadge">0 products</span>
-                            </div>
-                            <button id="refreshProductsBtn" class="btn-ghost">
-                                <i class="fas fa-arrows-rotate"></i> Refresh
+                            <div id="lowStockCountBadge" class="low-stock-count">0</div>
+                            <button id="openLowStockModalBtn" class="btn-danger">
+                                <i class="fas fa-list"></i> Show All Low Stocks
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <p class="muted" style="margin-bottom: 14px;">Tap any saved product to load it into the popup setup form for editing.</p>
-                        <input id="catalogSearchInput" type="text" placeholder="Search saved products by name" style="margin-bottom: 14px;">
-                        <div id="catalogProductList" class="product-list">
-                            <div class="empty-state">
-                                Products will appear here after loading from Firestore.
-                            </div>
+                        <div id="lowStockSummary" class="lookup-result empty">
+                            Low stock summary will appear here after loading from Firestore.
                         </div>
                     </div>
                 </div>
@@ -1094,6 +1267,69 @@
         </div>
     </div>
 
+    <div id="ownerPasswordModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 480px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Owner Settings Access</div>
+                <button id="closeOwnerPasswordModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="muted">Enter the owner password to open the Settings page.</div>
+            <div class="field">
+                <label for="ownerPasswordInput">Password</label>
+                <input id="ownerPasswordInput" type="password" placeholder="Enter owner password">
+            </div>
+            <div id="ownerPasswordError" class="owner-password-error"></div>
+            <div class="button-row">
+                <button id="submitOwnerPasswordBtn" class="btn-secondary">
+                    <i class="fas fa-unlock"></i> Open Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="lowStockModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 900px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Low Stock Products</div>
+                <button id="closeLowStockModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="muted">All products with stock of 3 or lower are shown here.</div>
+            <div id="lowStockList" class="report-list">
+                <div class="empty-state">Low stock products will appear here after loading from Firestore.</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="savedProductsModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 980px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Saved Products</div>
+                <button id="closeSavedProductsModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="inline-actions">
+                <div class="badge badge-count">
+                    <i class="fas fa-boxes-stacked"></i>
+                    <span id="productCountBadge">0 products</span>
+                </div>
+                <button id="refreshProductsBtn" class="btn-ghost">
+                    <i class="fas fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+            <input id="catalogSearchInput" type="text" placeholder="Search saved products by name">
+            <div id="catalogProductList" class="product-list">
+                <div class="empty-state">
+                    Products will appear here after loading from Firestore.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import {
@@ -1123,9 +1359,11 @@
 
         const state = {
             products: [],
+            sales: [],
             cart: [],
             lastSale: null,
             currentPage: "posPage",
+            ownerUnlocked: false,
             beepReady: false,
             audioContext: null,
             scanner: {
@@ -1137,6 +1375,8 @@
                 processing: false
             }
         };
+
+        const OWNER_PASSWORD = "1234";
 
         const demoProducts = [
             { scanCode: "4800016642002", codeType: "barcode", name: "Lucky Me Pancit Canton", category: "Noodles", price: 18, stock: 24, unit: "pack", notes: "Chilimansi flavor" },
@@ -1260,6 +1500,36 @@
             document.getElementById("productCountBadge").textContent = `${state.products.length} products`;
         }
 
+        function formatDateTime(value) {
+            if (!value) {
+                return "No date";
+            }
+
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return "No date";
+            }
+
+            return date.toLocaleString();
+        }
+
+        function normalizeFirestoreDate(value) {
+            if (!value) {
+                return null;
+            }
+
+            if (typeof value.toDate === "function") {
+                return value.toDate();
+            }
+
+            if (value instanceof Date) {
+                return value;
+            }
+
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
         function getProductStock(code) {
             const product = getProductByCodeFromState(code);
             return Number(product?.stock || 0);
@@ -1289,6 +1559,10 @@
             document.querySelectorAll(".nav-btn").forEach((button) => {
                 button.classList.toggle("active", button.dataset.page === pageId);
             });
+
+            if (pageId === "settingsPage") {
+                renderOwnerReports();
+            }
         }
 
         function getProductByCodeFromState(code) {
@@ -1322,6 +1596,29 @@
             };
         }
 
+        function getBarcodeMatches(query, limit = 8) {
+            const cleanQuery = normalizeScannedCode(query);
+            if (!cleanQuery) {
+                return [];
+            }
+
+            return state.products
+                .filter((product) => product.scanCode.includes(cleanQuery))
+                .sort((a, b) => {
+                    const aStarts = productStartsWith(a, cleanQuery) ? 0 : 1;
+                    const bStarts = productStartsWith(b, cleanQuery) ? 0 : 1;
+                    if (aStarts !== bStarts) {
+                        return aStarts - bStarts;
+                    }
+                    return a.scanCode.localeCompare(b.scanCode);
+                })
+                .slice(0, limit);
+        }
+
+        function productStartsWith(product, query) {
+            return String(product.scanCode || "").startsWith(query);
+        }
+
         async function fetchProducts() {
             setConnectionStatus("", "Loading products...");
 
@@ -1335,6 +1632,9 @@
                 updateProductCount();
                 renderCatalogProducts();
                 renderPosSearchResults();
+                renderManualBarcodeMatches("pos");
+                renderManualBarcodeMatches("catalog");
+                renderOwnerReports();
                 setConnectionStatus("connected", "Connected");
             } catch (error) {
                 console.error("Failed to fetch products:", error);
@@ -1342,9 +1642,236 @@
                 updateProductCount();
                 renderCatalogProducts();
                 renderPosSearchResults();
+                renderManualBarcodeMatches("pos");
+                renderManualBarcodeMatches("catalog");
+                renderOwnerReports();
                 setConnectionStatus("error", "Connection error");
                 showToast(`Failed to load products: ${error.message}`, "error");
             }
+        }
+
+        function normalizeSaleRecord(data = {}, fallbackId = "") {
+            const createdAtDate = normalizeFirestoreDate(data.createdAt);
+            const items = Array.isArray(data.items) ? data.items : [];
+            return {
+                id: fallbackId,
+                saleId: data.saleId || fallbackId || "Sale",
+                total: Number(data.total || 0),
+                cashReceived: Number(data.cashReceived || 0),
+                change: Number(data.change || 0),
+                createdAtDate,
+                createdAtText: createdAtDate ? formatDateTime(createdAtDate) : "Pending sync",
+                items,
+                itemCount: items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+            };
+        }
+
+        async function fetchSales(options = {}) {
+            try {
+                const snapshot = await getDocs(collection(db, "sales"));
+                const items = [];
+                snapshot.forEach((saleDoc) => {
+                    items.push(normalizeSaleRecord(saleDoc.data(), saleDoc.id));
+                });
+
+                state.sales = items.sort((a, b) => {
+                    const aTime = a.createdAtDate ? a.createdAtDate.getTime() : 0;
+                    const bTime = b.createdAtDate ? b.createdAtDate.getTime() : 0;
+                    return bTime - aTime;
+                });
+                renderOwnerReports();
+            } catch (error) {
+                console.error("Failed to fetch sales:", error);
+                state.sales = [];
+                renderOwnerReports();
+                if (!options.silent) {
+                    showToast(`Failed to load sales: ${error.message}`, "error");
+                }
+            }
+        }
+
+        function getTodaySales() {
+            const today = new Date();
+            const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const end = new Date(start);
+            end.setDate(end.getDate() + 1);
+
+            return state.sales.filter((sale) => (
+                sale.createdAtDate
+                && sale.createdAtDate >= start
+                && sale.createdAtDate < end
+            ));
+        }
+
+        function renderDailySalesDashboard() {
+            const target = document.getElementById("dailySalesStats");
+            const todaySales = getTodaySales();
+            const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+            const totalTransactions = todaySales.length;
+            const totalItems = todaySales.reduce((sum, sale) => sum + sale.itemCount, 0);
+            const averageSale = totalTransactions ? totalSales / totalTransactions : 0;
+
+            target.innerHTML = `
+                <div class="stat-card sales">
+                    <div class="stat-label">Today's Sales</div>
+                    <div class="stat-value">${formatCurrency(totalSales)}</div>
+                    <div class="muted">Total amount sold today.</div>
+                </div>
+                <div class="stat-card transactions">
+                    <div class="stat-label">Transactions</div>
+                    <div class="stat-value">${totalTransactions}</div>
+                    <div class="muted">Completed sales today.</div>
+                </div>
+                <div class="stat-card items">
+                    <div class="stat-label">Items Sold</div>
+                    <div class="stat-value">${totalItems}</div>
+                    <div class="muted">Total quantity sold today.</div>
+                </div>
+                <div class="stat-card average">
+                    <div class="stat-label">Average Sale</div>
+                    <div class="stat-value">${formatCurrency(averageSale)}</div>
+                    <div class="muted">Average amount per transaction today.</div>
+                </div>
+            `;
+        }
+
+        function renderManualBarcodeMatches(mode) {
+            const isPos = mode === "pos";
+            const input = document.getElementById(isPos ? "posManualBarcode" : "catalogManualBarcode");
+            const container = document.getElementById(isPos ? "posBarcodeMatches" : "catalogBarcodeMatches");
+            const query = normalizeScannedCode(input.value);
+
+            if (!query) {
+                container.innerHTML = `<div class="empty-state">Matching barcodes will appear here.</div>`;
+                return;
+            }
+
+            const matches = getBarcodeMatches(query);
+            if (!matches.length) {
+                container.innerHTML = `<div class="empty-state">No matching barcode found for "${escapeHtml(query)}".</div>`;
+                return;
+            }
+
+            container.innerHTML = matches.map((product) => `
+                <div class="search-item">
+                    <div class="search-item-info">
+                        <div class="search-item-name">${escapeHtml(product.name)}</div>
+                        <div class="cart-sub">${escapeHtml(product.scanCode)} | ${formatCurrency(product.price)} | Stock: ${escapeHtml(product.stock)}</div>
+                        ${getLowStockMarkup(product.stock)}
+                    </div>
+                    <button class="btn-secondary btn-small" data-manual-barcode-pick="${escapeHtml(product.scanCode)}" data-manual-barcode-mode="${mode}">
+                        <i class="fas fa-arrow-right"></i> ${isPos ? "Add" : "Load"}
+                    </button>
+                </div>
+            `).join("");
+
+            container.querySelectorAll("[data-manual-barcode-pick]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const code = button.dataset.manualBarcodePick;
+                    input.value = code;
+
+                    if (isPos) {
+                        await handlePosLookup(code, true);
+                        input.value = "";
+                    } else {
+                        await handleCatalogLookup(code);
+                    }
+
+                    renderManualBarcodeMatches(mode);
+                });
+            });
+        }
+
+        function renderLowStockList() {
+            const target = document.getElementById("lowStockList");
+            const summaryTarget = document.getElementById("lowStockSummary");
+            const countBadge = document.getElementById("lowStockCountBadge");
+            const lowStockProducts = state.products
+                .filter((product) => Number(product.stock || 0) <= 3)
+                .sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0) || a.name.localeCompare(b.name));
+
+            countBadge.textContent = String(lowStockProducts.length);
+
+            if (!lowStockProducts.length) {
+                target.innerHTML = `<div class="empty-state">No low stock products right now.</div>`;
+                summaryTarget.className = "lookup-result";
+                summaryTarget.innerHTML = `
+                    <div class="lookup-title">Stock looks good</div>
+                    <div class="muted">No products are currently at 3 or below.</div>
+                `;
+                return;
+            }
+
+            const outCount = lowStockProducts.filter((product) => Number(product.stock || 0) <= 0).length;
+            const criticalCount = lowStockProducts.filter((product) => Number(product.stock || 0) > 0 && Number(product.stock || 0) <= 3).length;
+
+            summaryTarget.className = "lookup-result";
+            summaryTarget.innerHTML = `
+                <div class="lookup-title">${lowStockProducts.length} low stock products found</div>
+                <div class="lookup-meta">
+                    <span><i class="fas fa-circle-exclamation"></i> Out of stock: ${outCount}</span>
+                    <span><i class="fas fa-triangle-exclamation"></i> Only 1 to 3 left: ${criticalCount}</span>
+                </div>
+                <div class="muted">Click Show All Low Stocks to open the full popup list.</div>
+            `;
+
+            target.innerHTML = lowStockProducts.map((product) => `
+                <div class="report-item">
+                    <div class="report-item-top">
+                        <div>
+                            <div class="report-title">${escapeHtml(product.name)}</div>
+                            <div class="muted">${escapeHtml(product.scanCode)} | ${escapeHtml(product.category || "No category")}</div>
+                        </div>
+                        <div class="price-pill">${formatCurrency(product.price)}</div>
+                    </div>
+                    <div class="report-meta">
+                        <span><i class="fas fa-cubes"></i> Stock: ${escapeHtml(product.stock)}</span>
+                        <span><i class="fas fa-box"></i> Unit: ${escapeHtml(product.unit || "Not set")}</span>
+                    </div>
+                    ${getLowStockMarkup(product.stock)}
+                </div>
+            `).join("");
+        }
+
+        function renderSalesHistory() {
+            const target = document.getElementById("salesHistoryList");
+
+            if (!state.sales.length) {
+                target.innerHTML = `<div class="empty-state">No sales history yet.</div>`;
+                return;
+            }
+
+            target.innerHTML = state.sales.map((sale) => {
+                const itemsSummary = sale.items
+                    .slice(0, 4)
+                    .map((item) => `${escapeHtml(item.name || item.scanCode)} x${Number(item.quantity || 0)}`)
+                    .join(", ");
+                const moreCount = Math.max(0, sale.items.length - 4);
+
+                return `
+                    <div class="report-item">
+                        <div class="report-item-top">
+                            <div>
+                                <div class="report-title">${escapeHtml(sale.saleId)}</div>
+                                <div class="muted">${escapeHtml(sale.createdAtText)}</div>
+                            </div>
+                            <div class="price-pill">${formatCurrency(sale.total)}</div>
+                        </div>
+                        <div class="report-meta">
+                            <span><i class="fas fa-money-bill-wave"></i> Cash: ${formatCurrency(sale.cashReceived)}</span>
+                            <span><i class="fas fa-reply"></i> Change: ${formatCurrency(sale.change)}</span>
+                            <span><i class="fas fa-cart-shopping"></i> Items: ${sale.itemCount}</span>
+                        </div>
+                        <div class="muted">${itemsSummary || "No items"}${moreCount ? `, and ${moreCount} more` : ""}</div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function renderOwnerReports() {
+            renderDailySalesDashboard();
+            renderLowStockList();
+            renderSalesHistory();
         }
 
         async function lookupProduct(code) {
@@ -1382,7 +1909,7 @@
                         </div>
                         <div class="muted">Go to the Products page to save this barcode with a name and price.</div>
                     `
-                    : "Scan or enter a barcode to show the product details and price.";
+                    : "Ready to scan a product.";
                 return;
             }
 
@@ -1671,7 +2198,7 @@
         function resetCatalogForm() {
             fillCatalogForm(null);
             document.getElementById("catalogLookupNote").textContent =
-                "Scan a product first. If the barcode already exists, the product name will show and you can update the total quantity and selling price before saving.";
+                "Scan or enter a barcode to load or create a product.";
             renderCatalogPreview(null, "");
         }
 
@@ -1740,6 +2267,7 @@
                     fillCatalogForm(product);
                     document.getElementById("catalogLookupNote").textContent =
                         `Loaded existing product ${product.name}. You can update the price or other details, then save again.`;
+                    closeSavedProductsModal();
                     openCatalogFormModal();
                 });
             });
@@ -1755,6 +2283,7 @@
                     fillCatalogForm(product);
                     document.getElementById("catalogLookupNote").textContent =
                         `Editing ${product.name}. Update the details and click Save Product.`;
+                    closeSavedProductsModal();
                     openCatalogFormModal();
                 });
             });
@@ -2024,6 +2553,7 @@
                 };
                 updatePrintButton();
                 await fetchProducts();
+                await fetchSales({ silent: true });
                 clearCart({ silent: true });
                 const result = document.getElementById("posLookupResult");
                 result.className = "lookup-result empty";
@@ -2181,6 +2711,102 @@
             syncBodyModalState();
         }
 
+        function openOwnerPasswordModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closeCatalogFormModal();
+            const modal = document.getElementById("ownerPasswordModal");
+            document.getElementById("ownerPasswordInput").value = "";
+            document.getElementById("ownerPasswordError").textContent = "";
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            window.setTimeout(() => {
+                document.getElementById("ownerPasswordInput").focus();
+            }, 0);
+        }
+
+        function closeOwnerPasswordModal() {
+            const modal = document.getElementById("ownerPasswordModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            document.getElementById("ownerPasswordError").textContent = "";
+            syncBodyModalState();
+        }
+
+        function openLowStockModal() {
+            const modal = document.getElementById("lowStockModal");
+            renderLowStockList();
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeLowStockModal() {
+            const modal = document.getElementById("lowStockModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openSavedProductsModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closeCatalogFormModal();
+            const modal = document.getElementById("savedProductsModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            renderCatalogProducts();
+        }
+
+        function closeSavedProductsModal() {
+            const modal = document.getElementById("savedProductsModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        async function openOwnerSettings() {
+            if (!state.ownerUnlocked) {
+                openOwnerPasswordModal();
+                return;
+            }
+
+            switchPage("settingsPage");
+            renderOwnerReports();
+            await fetchSales({ silent: true });
+        }
+
+        async function submitOwnerPassword() {
+            const input = document.getElementById("ownerPasswordInput");
+            const error = document.getElementById("ownerPasswordError");
+            const password = input.value;
+
+            if (password !== OWNER_PASSWORD) {
+                error.textContent = "Incorrect password. Try again.";
+                input.focus();
+                input.select();
+                showToast("Wrong owner password", "error");
+                return;
+            }
+
+            state.ownerUnlocked = true;
+            closeOwnerPasswordModal();
+            switchPage("settingsPage");
+            renderOwnerReports();
+            await fetchSales({ silent: true });
+            showToast("Owner settings unlocked", "success");
+        }
+
+        async function refreshOwnerReports() {
+            await fetchProducts();
+            await fetchSales({ silent: true });
+            showToast("Owner reports refreshed", "success");
+        }
+
         function resetScannerViewport() {
             const viewport = document.getElementById("scannerModalViewport");
             viewport.classList.remove("active");
@@ -2312,6 +2938,10 @@
                 switchPage(button.dataset.page);
             });
         });
+        document.getElementById("openSettingsBtn").addEventListener("click", openOwnerSettings);
+        document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
+        document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
+        document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
 
         document.getElementById("togglePosScannerBtn").addEventListener("click", () => {
             if (state.scanner.active && state.scanner.mode === "pos") {
@@ -2343,25 +2973,58 @@
                 closeCatalogFormModal();
             }
         });
+        document.getElementById("closeOwnerPasswordModalBtn").addEventListener("click", closeOwnerPasswordModal);
+        document.getElementById("submitOwnerPasswordBtn").addEventListener("click", submitOwnerPassword);
+        document.getElementById("ownerPasswordModal").addEventListener("click", (event) => {
+            if (event.target.id === "ownerPasswordModal") {
+                closeOwnerPasswordModal();
+            }
+        });
+        document.getElementById("closeLowStockModalBtn").addEventListener("click", closeLowStockModal);
+        document.getElementById("lowStockModal").addEventListener("click", (event) => {
+            if (event.target.id === "lowStockModal") {
+                closeLowStockModal();
+            }
+        });
+        document.getElementById("closeSavedProductsModalBtn").addEventListener("click", closeSavedProductsModal);
+        document.getElementById("savedProductsModal").addEventListener("click", (event) => {
+            if (event.target.id === "savedProductsModal") {
+                closeSavedProductsModal();
+            }
+        });
         document.getElementById("posManualLookupBtn").addEventListener("click", () => {
             handlePosLookup(document.getElementById("posManualBarcode").value, true);
             document.getElementById("posManualBarcode").value = "";
+            renderManualBarcodeMatches("pos");
         });
 
         document.getElementById("catalogManualLookupBtn").addEventListener("click", () => {
             handleCatalogLookup(document.getElementById("catalogManualBarcode").value);
+            renderManualBarcodeMatches("catalog");
         });
 
         document.getElementById("posManualBarcode").addEventListener("keypress", (event) => {
             if (event.key === "Enter") {
                 handlePosLookup(event.target.value, true);
                 event.target.value = "";
+                renderManualBarcodeMatches("pos");
             }
         });
 
         document.getElementById("catalogManualBarcode").addEventListener("keypress", (event) => {
             if (event.key === "Enter") {
                 handleCatalogLookup(event.target.value);
+            }
+        });
+        document.getElementById("posManualBarcode").addEventListener("input", () => {
+            renderManualBarcodeMatches("pos");
+        });
+        document.getElementById("catalogManualBarcode").addEventListener("input", () => {
+            renderManualBarcodeMatches("catalog");
+        });
+        document.getElementById("ownerPasswordInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                submitOwnerPassword();
             }
         });
 
@@ -2400,6 +3063,21 @@
 
             if (document.getElementById("catalogFormModal").classList.contains("active")) {
                 closeCatalogFormModal();
+                return;
+            }
+
+            if (document.getElementById("ownerPasswordModal").classList.contains("active")) {
+                closeOwnerPasswordModal();
+                return;
+            }
+
+            if (document.getElementById("lowStockModal").classList.contains("active")) {
+                closeLowStockModal();
+                return;
+            }
+
+            if (document.getElementById("savedProductsModal").classList.contains("active")) {
+                closeSavedProductsModal();
             }
         });
 
@@ -2407,8 +3085,10 @@
         resetCatalogForm();
         renderPosLookup(null, "");
         renderPosSearchResults();
+        renderOwnerReports();
         updatePrintButton();
         fetchProducts();
+        fetchSales({ silent: true });
     </script>
 </body>
 </html>
