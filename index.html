@@ -49,7 +49,6 @@
         }
 
         .status-bar,
-        .page-nav,
         .page-panel,
         .card,
         .cart-panel {
@@ -116,12 +115,9 @@
             color: #92400e;
         }
 
-        .page-nav {
-            border-radius: 24px;
-            padding: 10px;
-            display: inline-flex;
-            gap: 10px;
-            margin-bottom: 18px;
+        .status-group .nav-btn {
+            background: #fff7ef;
+            border: 1px solid rgba(251, 146, 60, 0.18);
         }
 
         .nav-btn {
@@ -138,6 +134,12 @@
         .nav-btn.active {
             background: linear-gradient(135deg, var(--brand), #ff8a3d);
             color: #fff;
+        }
+
+        .nav-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .page-panel {
@@ -732,20 +734,13 @@
                     <i class="fas fa-plug"></i>
                     <span>Connecting...</span>
                 </div>
-                <div class="badge badge-count">
-                    <i class="fas fa-boxes-stacked"></i>
-                    <span id="productCountBadge">0 products</span>
-                </div>
+                <button id="navPosBtn" class="nav-btn active" data-page="posPage">
+                    <span class="nav-label"><i class="fas fa-cash-register"></i> POS</span>
+                </button>
+                <button id="navCatalogBtn" class="nav-btn" data-page="catalogPage">
+                    <span class="nav-label"><i class="fas fa-box-open"></i> Products</span>
+                </button>
             </div>
-        </div>
-
-        <div class="page-nav">
-            <button id="navPosBtn" class="nav-btn active" data-page="posPage">
-                <i class="fas fa-cash-register"></i> POS
-            </button>
-            <button id="navCatalogBtn" class="nav-btn" data-page="catalogPage">
-                <i class="fas fa-box-open"></i> Products
-            </button>
         </div>
 
         <section id="posPage" class="page-panel active">
@@ -902,6 +897,10 @@
                     <div class="card-header">
                         <h3><i class="fas fa-database"></i> Saved Products</h3>
                         <div class="inline-actions">
+                            <div class="badge badge-count">
+                                <i class="fas fa-boxes-stacked"></i>
+                                <span id="productCountBadge">0 products</span>
+                            </div>
                             <button id="refreshProductsBtn" class="btn-ghost">
                                 <i class="fas fa-arrows-rotate"></i> Refresh
                             </button>
@@ -983,6 +982,9 @@
                 </button>
                 <button id="seedDemoProductsBtn" class="btn-ghost">
                     <i class="fas fa-box"></i> Add Demo
+                </button>
+                <button id="saveCatalogAndScanBtn" class="btn-primary">
+                    <i class="fas fa-camera"></i> Save And Scan Next
                 </button>
                 <button id="saveCatalogProductBtn" class="btn-secondary">
                     <i class="fas fa-floppy-disk"></i> Save Product
@@ -1136,6 +1138,21 @@
 
             button.disabled = isLoading;
             button.innerHTML = isLoading ? loadingHtml : idleHtml;
+        }
+
+        function setCatalogSaveButtonsLoading(isLoading) {
+            setButtonLoading(
+                "saveCatalogProductBtn",
+                isLoading,
+                '<i class="fas fa-floppy-disk"></i> Save Product',
+                '<i class="fas fa-spinner fa-spin"></i> Saving...'
+            );
+            setButtonLoading(
+                "saveCatalogAndScanBtn",
+                isLoading,
+                '<i class="fas fa-camera"></i> Save And Scan Next',
+                '<i class="fas fa-spinner fa-spin"></i> Saving And Opening Camera...'
+            );
         }
 
         function updateProductCount() {
@@ -1720,7 +1737,8 @@
             }
         }
 
-        async function saveCatalogProduct() {
+        async function saveCatalogProduct(options = {}) {
+            const { scanNext = false } = options;
             const scanCode = normalizeScannedCode(document.getElementById("catalogBarcode").value);
             const name = document.getElementById("catalogName").value.trim();
             const category = document.getElementById("catalogCategory").value.trim();
@@ -1744,12 +1762,7 @@
                 return;
             }
 
-            setButtonLoading(
-                "saveCatalogProductBtn",
-                true,
-                '<i class="fas fa-floppy-disk"></i> Save Product',
-                '<i class="fas fa-spinner fa-spin"></i> Saving...'
-            );
+            setCatalogSaveButtonsLoading(true);
 
             try {
                 const existing = await lookupProduct(scanCode);
@@ -1775,18 +1788,21 @@
                 fillCatalogForm({ scanCode, name, category, price, stock, unit, notes });
                 document.getElementById("catalogLookupNote").textContent =
                     `Saved ${name}. This barcode is now ready to use on the POS page, with total quantity ${stock} and selling price ${formatCurrency(price)}.`;
-                showToast("Product saved successfully", "success");
+                showToast(
+                    scanNext ? "Product saved. Camera reopening for the next barcode." : "Product saved successfully",
+                    "success"
+                );
                 closeCatalogFormModal();
+                if (scanNext) {
+                    resetCatalogForm();
+                    switchPage("catalogPage");
+                    await startScanner("catalog");
+                }
             } catch (error) {
                 console.error("Failed to save product:", error);
                 showToast(`Failed to save product: ${error.message}`, "error");
             } finally {
-                setButtonLoading(
-                    "saveCatalogProductBtn",
-                    false,
-                    '<i class="fas fa-floppy-disk"></i> Save Product',
-                    '<i class="fas fa-spinner fa-spin"></i> Saving...'
-                );
+                setCatalogSaveButtonsLoading(false);
             }
         }
 
@@ -2248,7 +2264,8 @@
             }
         });
 
-        document.getElementById("saveCatalogProductBtn").addEventListener("click", saveCatalogProduct);
+        document.getElementById("saveCatalogProductBtn").addEventListener("click", () => saveCatalogProduct());
+        document.getElementById("saveCatalogAndScanBtn").addEventListener("click", () => saveCatalogProduct({ scanNext: true }));
         document.getElementById("resetCatalogFormBtn").addEventListener("click", resetCatalogForm);
         document.getElementById("seedDemoProductsBtn").addEventListener("click", addDemoProducts);
         document.getElementById("refreshProductsBtn").addEventListener("click", fetchProducts);
