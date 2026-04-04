@@ -39,6 +39,10 @@
             padding: 22px;
         }
 
+        body.modal-open {
+            overflow: hidden;
+        }
+
         .app-shell {
             max-width: 1440px;
             margin: 0 auto;
@@ -633,6 +637,60 @@
             opacity: 1;
         }
 
+        .camera-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 9998;
+        }
+
+        .camera-modal.active {
+            display: flex;
+        }
+
+        .camera-modal-card {
+            width: min(100%, 720px);
+            background: #fffdf9;
+            border-radius: 28px;
+            box-shadow: 0 28px 60px rgba(15, 23, 42, 0.35);
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .camera-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .camera-modal-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .camera-modal .scanner-stage {
+            display: block;
+            min-height: 320px;
+        }
+
+        .modal-note {
+            margin: 0;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .form-modal .camera-modal-card {
+            width: min(100%, 860px);
+            max-height: calc(100vh - 36px);
+            overflow: auto;
+        }
+
         @media (max-width: 1080px) {
             .page-grid.pos,
             .page-grid.catalog {
@@ -704,7 +762,9 @@
                         </div>
                         <div class="card-body">
                             <div class="scanner-shell">
-                                <div id="posScannerViewport" class="scanner-stage"></div>
+                                <div class="catalog-note">
+                                    <i class="fas fa-camera"></i> Camera opens in a popup so you can scan without scrolling.
+                                </div>
                                 <div class="manual-input">
                                     <input id="posManualBarcode" type="text" placeholder="Enter barcode manually">
                                     <button id="posManualLookupBtn" class="btn-secondary">
@@ -798,7 +858,9 @@
                         </div>
                         <div class="card-body">
                             <div class="scanner-shell">
-                                <div id="catalogScannerViewport" class="scanner-stage"></div>
+                                <div class="catalog-note">
+                                    <i class="fas fa-camera"></i> Camera opens in a popup so you can add products faster.
+                                </div>
                                 <div class="manual-input">
                                     <input id="catalogManualBarcode" type="text" placeholder="Enter barcode for product setup">
                                     <button id="catalogManualLookupBtn" class="btn-secondary">
@@ -825,50 +887,13 @@
                         <div class="card-header">
                             <h3><i class="fas fa-pen-to-square"></i> Product Setup Form</h3>
                             <div class="inline-actions">
-                                <button id="resetCatalogFormBtn" class="btn-ghost">
-                                    <i class="fas fa-rotate-left"></i> Reset
-                                </button>
-                                <button id="seedDemoProductsBtn" class="btn-ghost">
-                                    <i class="fas fa-box"></i> Add Demo
+                                <button id="openCatalogFormBtn" class="btn-secondary">
+                                    <i class="fas fa-pen-to-square"></i> Open Form
                                 </button>
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="field-grid">
-                                <div class="field">
-                                    <label for="catalogBarcode">Barcode</label>
-                                    <input id="catalogBarcode" type="text" placeholder="Barcode value">
-                                </div>
-                                <div class="field">
-                                    <label for="catalogPrice">Selling Price</label>
-                                    <input id="catalogPrice" type="number" min="0" step="0.01" placeholder="Selling price">
-                                </div>
-                                <div class="field full">
-                                    <label for="catalogName">Product Name</label>
-                                    <input id="catalogName" type="text" placeholder="Product name will show here or you can type it">
-                                </div>
-                                <div class="field">
-                                    <label for="catalogCategory">Category</label>
-                                    <input id="catalogCategory" type="text" placeholder="Example: Noodles">
-                                </div>
-                                <div class="field">
-                                    <label for="catalogStock">Total Quantity</label>
-                                    <input id="catalogStock" type="number" min="0" step="1" placeholder="How many pieces are available">
-                                </div>
-                                <div class="field">
-                                    <label for="catalogUnit">Unit</label>
-                                    <input id="catalogUnit" type="text" placeholder="Example: pc, sachet, bottle">
-                                </div>
-                                <div class="field full">
-                                    <label for="catalogNotes">Notes</label>
-                                    <textarea id="catalogNotes" placeholder="Optional notes about the product"></textarea>
-                                </div>
-                            </div>
-                            <div class="button-row" style="margin-top: 16px;">
-                                <button id="saveCatalogProductBtn" class="btn-secondary">
-                                    <i class="fas fa-floppy-disk"></i> Save Product
-                                </button>
-                            </div>
+                            <p class="modal-note">Scan or load a barcode, then the product setup form opens in a popup so you can type product name, total quantity, and selling price without scrolling.</p>
                         </div>
                     </div>
                 </div>
@@ -883,7 +908,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <p class="muted" style="margin-bottom: 14px;">Tap any saved product to load it into the setup form for editing.</p>
+                        <p class="muted" style="margin-bottom: 14px;">Tap any saved product to load it into the popup setup form for editing.</p>
                         <input id="catalogSearchInput" type="text" placeholder="Search saved products by name" style="margin-bottom: 14px;">
                         <div id="catalogProductList" class="product-list">
                             <div class="empty-state">
@@ -897,6 +922,74 @@
     </div>
 
     <div id="toast" class="toast"></div>
+    <div id="scannerModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card">
+            <div class="camera-modal-header">
+                <div id="scannerModalTitle" class="camera-modal-title">Camera Scanner</div>
+                <button id="closeScannerModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div id="scannerModalMessage" class="muted">Point the camera at one barcode. The camera closes after one successful scan.</div>
+            <div id="scannerModalViewport" class="scanner-stage"></div>
+        </div>
+    </div>
+
+    <div id="catalogFormModal" class="camera-modal form-modal" aria-hidden="true">
+        <div class="camera-modal-card">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Product Setup Form</div>
+                <button id="closeCatalogFormModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="muted">Type or update the product details here after scanning the barcode.</div>
+            <div id="catalogModalPreviewResult" class="lookup-result empty">
+                Scan a barcode to show the product name, total quantity, and selling price here.
+            </div>
+            <div class="field-grid">
+                <div class="field">
+                    <label for="catalogBarcode">Barcode</label>
+                    <input id="catalogBarcode" type="text" placeholder="Barcode value">
+                </div>
+                <div class="field">
+                    <label for="catalogPrice">Selling Price</label>
+                    <input id="catalogPrice" type="number" min="0" step="0.01" placeholder="Selling price">
+                </div>
+                <div class="field full">
+                    <label for="catalogName">Product Name</label>
+                    <input id="catalogName" type="text" placeholder="Product name will show here or you can type it">
+                </div>
+                <div class="field">
+                    <label for="catalogCategory">Category</label>
+                    <input id="catalogCategory" type="text" placeholder="Example: Noodles">
+                </div>
+                <div class="field">
+                    <label for="catalogStock">Total Quantity</label>
+                    <input id="catalogStock" type="number" min="0" step="1" placeholder="How many pieces are available">
+                </div>
+                <div class="field">
+                    <label for="catalogUnit">Unit</label>
+                    <input id="catalogUnit" type="text" placeholder="Example: pc, sachet, bottle">
+                </div>
+                <div class="field full">
+                    <label for="catalogNotes">Notes</label>
+                    <textarea id="catalogNotes" placeholder="Optional notes about the product"></textarea>
+                </div>
+            </div>
+            <div class="button-row">
+                <button id="resetCatalogFormBtn" class="btn-ghost">
+                    <i class="fas fa-rotate-left"></i> Reset
+                </button>
+                <button id="seedDemoProductsBtn" class="btn-ghost">
+                    <i class="fas fa-box"></i> Add Demo
+                </button>
+                <button id="saveCatalogProductBtn" class="btn-secondary">
+                    <i class="fas fa-floppy-disk"></i> Save Product
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -930,6 +1023,8 @@
             cart: [],
             lastSale: null,
             currentPage: "posPage",
+            beepReady: false,
+            audioContext: null,
             scanner: {
                 active: false,
                 mode: null,
@@ -961,6 +1056,53 @@
             showToast.timer = setTimeout(() => {
                 toast.classList.remove("show");
             }, 2400);
+        }
+
+        async function prepareScanBeep() {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                return false;
+            }
+
+            if (!state.audioContext) {
+                state.audioContext = new AudioContextClass();
+            }
+
+            if (state.audioContext.state === "suspended") {
+                try {
+                    await state.audioContext.resume();
+                } catch (error) {
+                    console.warn("Audio resume warning:", error);
+                    return false;
+                }
+            }
+
+            state.beepReady = state.audioContext.state === "running";
+            return state.beepReady;
+        }
+
+        function playScanBeep() {
+            if (!state.audioContext || state.audioContext.state !== "running") {
+                return;
+            }
+
+            const context = state.audioContext;
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            const startTime = context.currentTime;
+
+            oscillator.type = "sine";
+            oscillator.frequency.setValueAtTime(980, startTime);
+            oscillator.frequency.exponentialRampToValueAtTime(760, startTime + 0.12);
+
+            gainNode.gain.setValueAtTime(0.0001, startTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.18, startTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.16);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 0.16);
         }
 
         function escapeHtml(value) {
@@ -1142,24 +1284,30 @@
         }
 
         function renderCatalogPreview(product, code = "") {
-            const target = document.getElementById("catalogPreviewResult");
+            const targets = [
+                document.getElementById("catalogPreviewResult"),
+                document.getElementById("catalogModalPreviewResult")
+            ].filter(Boolean);
+
+            const emptyMarkup = code
+                ? `
+                    <div class="lookup-title">New barcode ready</div>
+                    <div class="lookup-meta">
+                        <span><i class="fas fa-barcode"></i> ${escapeHtml(code)}</span>
+                    </div>
+                    <div class="muted">No saved product yet. Type the product name, total quantity, and selling price below, then save.</div>
+                `
+                : "Scan a barcode to show the product name, total quantity, and selling price here.";
 
             if (!product) {
-                target.className = "lookup-result empty";
-                target.innerHTML = code
-                    ? `
-                        <div class="lookup-title">New barcode ready</div>
-                        <div class="lookup-meta">
-                            <span><i class="fas fa-barcode"></i> ${escapeHtml(code)}</span>
-                        </div>
-                        <div class="muted">No saved product yet. Type the product name, total quantity, and selling price below, then save.</div>
-                    `
-                    : "Scan a barcode to show the product name, total quantity, and selling price here.";
+                targets.forEach((target) => {
+                    target.className = "lookup-result empty";
+                    target.innerHTML = emptyMarkup;
+                });
                 return;
             }
 
-            target.className = "lookup-result";
-            target.innerHTML = `
+            const previewMarkup = `
                 <div class="lookup-title">${escapeHtml(product.name || "Unnamed product")}</div>
                 <div class="lookup-meta">
                     <span><i class="fas fa-barcode"></i> ${escapeHtml(product.scanCode)}</span>
@@ -1169,6 +1317,11 @@
                 ${getLowStockMarkup(product.stock)}
                 <div class="muted">${escapeHtml(product.category || "No category")}${product.unit ? ` | Unit: ${escapeHtml(product.unit)}` : ""}${product.notes ? ` | ${escapeHtml(product.notes)}` : ""}</div>
             `;
+
+            targets.forEach((target) => {
+                target.className = "lookup-result";
+                target.innerHTML = previewMarkup;
+            });
         }
 
         function getCatalogFormData() {
@@ -1469,6 +1622,7 @@
                     fillCatalogForm(product);
                     document.getElementById("catalogLookupNote").textContent =
                         `Loaded existing product ${product.name}. You can update the price or other details, then save again.`;
+                    openCatalogFormModal();
                 });
             });
 
@@ -1483,6 +1637,7 @@
                     fillCatalogForm(product);
                     document.getElementById("catalogLookupNote").textContent =
                         `Editing ${product.name}. Update the details and click Save Product.`;
+                    openCatalogFormModal();
                 });
             });
 
@@ -1538,8 +1693,9 @@
                     fillCatalogForm(product);
                     document.getElementById("catalogLookupNote").textContent =
                         `Existing product found for barcode ${product.scanCode}. The product name is shown and you can change the total quantity and selling price before saving.`;
+                    openCatalogFormModal();
                     document.getElementById("catalogStock").focus();
-                    showToast("Existing product loaded");
+                    showToast("Existing product loaded", "success");
                     return;
                 }
 
@@ -1555,11 +1711,12 @@
                 renderCatalogPreview(null, cleanCode);
                 document.getElementById("catalogLookupNote").textContent =
                     `No saved product for barcode ${cleanCode}. Enter the product name, total quantity, and selling price, then save it.`;
+                openCatalogFormModal();
                 document.getElementById("catalogName").focus();
-                showToast("New barcode ready for setup");
+                showToast("New barcode ready for setup", "success");
             } catch (error) {
                 console.error("Catalog lookup failed:", error);
-                showToast(`Failed to load product: ${error.message}`);
+                showToast(`Failed to load product: ${error.message}`, "error");
             }
         }
 
@@ -1619,6 +1776,7 @@
                 document.getElementById("catalogLookupNote").textContent =
                     `Saved ${name}. This barcode is now ready to use on the POS page, with total quantity ${stock} and selling price ${formatCurrency(price)}.`;
                 showToast("Product saved successfully", "success");
+                closeCatalogFormModal();
             } catch (error) {
                 console.error("Failed to save product:", error);
                 showToast(`Failed to save product: ${error.message}`, "error");
@@ -1843,10 +2001,74 @@
                 : '<i class="fas fa-camera"></i> Open Camera';
         }
 
-        function resetScannerViewport(viewportId, message) {
-            const viewport = document.getElementById(viewportId);
+        function syncBodyModalState() {
+            const hasActiveModal = document.querySelector(".camera-modal.active");
+            document.body.classList.toggle("modal-open", Boolean(hasActiveModal));
+        }
+
+        function openScannerModal(mode) {
+            const modal = document.getElementById("scannerModal");
+            const title = document.getElementById("scannerModalTitle");
+            const message = document.getElementById("scannerModalMessage");
+            const viewport = document.getElementById("scannerModalViewport");
+
+            title.textContent = mode === "pos" ? "POS Camera Scanner" : "Add Product Camera";
+            message.textContent = mode === "pos"
+                ? "Point the camera at one barcode to add the product to cart."
+                : "Point the camera at one barcode to load product details for saving.";
+            viewport.classList.add("active");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeScannerModal() {
+            const modal = document.getElementById("scannerModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openCatalogFormModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            const modal = document.getElementById("catalogFormModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+
+            window.setTimeout(() => {
+                const barcodeField = document.getElementById("catalogBarcode");
+                const nameField = document.getElementById("catalogName");
+                const stockField = document.getElementById("catalogStock");
+
+                if (!barcodeField.value.trim()) {
+                    barcodeField.focus();
+                    return;
+                }
+
+                if (!nameField.value.trim()) {
+                    nameField.focus();
+                    return;
+                }
+
+                stockField.focus();
+            }, 0);
+        }
+
+        function closeCatalogFormModal() {
+            const modal = document.getElementById("catalogFormModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function resetScannerViewport() {
+            const viewport = document.getElementById("scannerModalViewport");
             viewport.classList.remove("active");
             viewport.innerHTML = "";
+            closeScannerModal();
         }
 
         function stopScanner(showMessage = true) {
@@ -1865,15 +2087,9 @@
                 }
             }
 
-            if (state.scanner.viewportId === "posScannerViewport") {
-                setScannerButtonState("togglePosScannerBtn", false);
-                resetScannerViewport("posScannerViewport", "Ready to scan products for checkout.");
-            }
-
-            if (state.scanner.viewportId === "catalogScannerViewport") {
-                setScannerButtonState("toggleCatalogScannerBtn", false);
-                resetScannerViewport("catalogScannerViewport", "Scan a barcode to load existing details or prepare a new product.");
-            }
+            setScannerButtonState("togglePosScannerBtn", false);
+            setScannerButtonState("toggleCatalogScannerBtn", false);
+            resetScannerViewport();
 
             state.scanner.active = false;
             state.scanner.mode = null;
@@ -1902,6 +2118,7 @@
 
             state.scanner.processing = true;
             state.scanner.pauseUntil = now + 1500;
+            playScanBeep();
             stopScanner(false);
 
             if (mode === "pos") {
@@ -1912,17 +2129,22 @@
         }
 
         async function startScanner(mode) {
-            const targetId = mode === "pos" ? "posScannerViewport" : "catalogScannerViewport";
+            const targetId = "scannerModalViewport";
 
             if (state.scanner.active) {
                 stopScanner(false);
             }
+
+            closeCatalogFormModal();
 
             if (typeof Html5Qrcode === "undefined") {
                 showToast("Scanner library is still loading. Please try again.", "error");
                 return;
             }
 
+            await prepareScanBeep();
+
+            openScannerModal(mode);
             const viewport = document.getElementById(targetId);
             viewport.innerHTML = "";
             viewport.classList.add("active");
@@ -1963,7 +2185,7 @@
                 showToast("Camera opened. Scan one barcode.", "success");
             } catch (error) {
                 console.error("Scanner error:", error);
-                resetScannerViewport(targetId, "Camera access failed. Check permission and try again.");
+                resetScannerViewport();
                 showToast("Camera error or permission denied", "error");
             }
         }
@@ -1987,6 +2209,21 @@
                 stopScanner();
             } else {
                 startScanner("catalog");
+            }
+        });
+        document.getElementById("closeScannerModalBtn").addEventListener("click", () => {
+            stopScanner();
+        });
+        document.getElementById("scannerModal").addEventListener("click", (event) => {
+            if (event.target.id === "scannerModal") {
+                stopScanner();
+            }
+        });
+        document.getElementById("openCatalogFormBtn").addEventListener("click", openCatalogFormModal);
+        document.getElementById("closeCatalogFormModalBtn").addEventListener("click", closeCatalogFormModal);
+        document.getElementById("catalogFormModal").addEventListener("click", (event) => {
+            if (event.target.id === "catalogFormModal") {
+                closeCatalogFormModal();
             }
         });
         document.getElementById("posManualLookupBtn").addEventListener("click", () => {
@@ -2032,6 +2269,20 @@
             "catalogNotes"
         ].forEach((fieldId) => {
             document.getElementById(fieldId).addEventListener("input", syncCatalogPreviewFromForm);
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") {
+                return;
+            }
+
+            if (document.getElementById("scannerModal").classList.contains("active")) {
+                stopScanner();
+                return;
+            }
+
+            if (document.getElementById("catalogFormModal").classList.contains("active")) {
+                closeCatalogFormModal();
+            }
         });
 
         renderCart();
