@@ -921,12 +921,15 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const LOCAL_PRODUCTS_KEY = "kristel_pos_products";
+        const LOCAL_SALES_KEY = "kristel_pos_sales";
 
         const state = {
             products: [],
             cart: [],
             lastSale: null,
             currentPage: "posPage",
+            firestoreBlocked: false,
             scanner: {
                 active: false,
                 mode: null,
@@ -1032,39 +1035,109 @@
             return String(rawValue || "").trim();
         }
 
+        function normalizeProductRecord(data = {}, fallbackId = "") {
+            const scanCode = normalizeScannedCode(data.scanCode || data.barcode || fallbackId);
+            return {
+                id: fallbackId || scanCode,
+                scanCode,
+                codeType: data.codeType || detectCodeType(scanCode),
+                name: data.name || "Unnamed product",
+                category: data.category || "",
+                price: Number(data.price || 0),
+                stock: Number(data.stock || 0),
+                unit: data.unit || "",
+                notes: data.notes || ""
+            };
+        }
+
+        function isPermissionError(error) {
+            const message = String(error?.message || "").toLowerCase();
+            return error?.code === "permission-denied"
+                || message.includes("missing or insufficient permissions")
+                || message.includes("permission");
+        }
+
+        function readLocalJson(key) {
+            try {
+                return JSON.parse(localStorage.getItem(key) || "[]");
+            } catch (error) {
+                console.error(`Failed to read local storage key ${key}:`, error);
+                return [];
+            }
+        }
+
+        function writeLocalJson(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function getLocalProducts() {
+            return readLocalJson(LOCAL_PRODUCTS_KEY).map((item) => normalizeProductRecord(item, item.scanCode || item.barcode || ""));
+        }
+
+        function upsertLocalProduct(product) {
+            const products = getLocalProducts();
+            const normalized = normalizeProductRecord(product, product.scanCode || product.barcode || "");
+            const index = products.findIndex((item) => item.scanCode === normalized.scanCode);
+
+            if (index >= 0) {
+                products[index] = { ...products[index], ...normalized };
+            } else {
+                products.push(normalized);
+            }
+
+            writeLocalJson(LOCAL_PRODUCTS_KEY, products);
+        }
+
+        function removeLocalProduct(code) {
+            const products = getLocalProducts().filter((item) => item.scanCode !== code);
+            writeLocalJson(LOCAL_PRODUCTS_KEY, products);
+        }
+
+        function appendLocalSale(sale) {
+            const sales = readLocalJson(LOCAL_SALES_KEY);
+            sales.push({
+                ...sale,
+                createdAtText: new Date().toLocaleString()
+            });
+            writeLocalJson(LOCAL_SALES_KEY, sales);
+        }
+
         async function fetchProducts() {
             setConnectionStatus("", "Loading products...");
+            let items = [];
+            let firestoreLoaded = false;
 
             try {
                 const snapshot = await getDocs(collection(db, "products"));
-                const items = [];
-
                 snapshot.forEach((productDoc) => {
-                    const data = productDoc.data();
-                    items.push({
-                        id: productDoc.id,
-                        scanCode: String(data.scanCode || data.barcode || productDoc.id || "").trim(),
-                        codeType: data.codeType || detectCodeType(String(data.scanCode || data.barcode || productDoc.id || "").trim()),
-                        name: data.name || "Unnamed product",
-                        category: data.category || "",
-                        price: Number(data.price || 0),
-                        stock: Number(data.stock || 0),
-                        unit: data.unit || "",
-                        notes: data.notes || ""
-                    });
+                    items.push(normalizeProductRecord(productDoc.data(), productDoc.id));
                 });
-
-                items.sort((a, b) => a.name.localeCompare(b.name));
-                state.products = items;
-
-                updateProductCount();
-                renderCatalogProducts();
-                renderPosSearchResults();
+                firestoreLoaded = true;
+                state.firestoreBlocked = false;
                 setConnectionStatus("connected", "Connected");
             } catch (error) {
                 console.error("Failed to fetch products:", error);
-                setConnectionStatus("error", "Connection error");
-                showToast(`Failed to load products: ${error.message}`);
+                if (isPermissionError(error)) {
+                    state.firestoreBlocked = true;
+                    setConnectionStatus("error", "Using local save");
+                    showToast("Firestore is blocked. Using local browser save.");
+                } else {
+                    setConnectionStatus("error", "Connection error");
+                    showToast(`Failed to load products: ${error.message}`);
+                }
+            }
+
+            const merged = new Map();
+            items.forEach((product) => merged.set(product.scanCode, product));
+            getLocalProducts().forEach((product) => merged.set(product.scanCode, product));
+
+            state.products = Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
+            updateProductCount();
+            renderCatalogProducts();
+            renderPosSearchResults();
+
+            if (!firestoreLoaded && !state.products.length) {
+                setConnectionStatus("error", "No saved products");
             }
         }
 
@@ -1087,17 +1160,7 @@
             }
 
             const data = snapshot.data();
-            return {
-                id: snapshot.id,
-                scanCode: String(data.scanCode || data.barcode || snapshot.id || "").trim(),
-                codeType: data.codeType || detectCodeType(String(data.scanCode || data.barcode || snapshot.id || "").trim()),
-                name: data.name || "Unnamed product",
-                category: data.category || "",
-                price: Number(data.price || 0),
-                stock: Number(data.stock || 0),
-                unit: data.unit || "",
-                notes: data.notes || ""
-            };
+            return normalizeProductRecord(data, snapshot.id);
         }
 
         function renderPosLookup(product, code) {
@@ -1605,7 +1668,27 @@
                 showToast("Product saved successfully");
             } catch (error) {
                 console.error("Failed to save product:", error);
-                showToast(`Failed to save product: ${error.message}`);
+                if (isPermissionError(error)) {
+                    upsertLocalProduct({
+                        scanCode,
+                        barcode: scanCode,
+                        codeType: detectCodeType(scanCode),
+                        name,
+                        category,
+                        price,
+                        stock,
+                        unit,
+                        notes
+                    });
+                    state.firestoreBlocked = true;
+                    await fetchProducts();
+                    fillCatalogForm({ scanCode, name, category, price, stock, unit, notes });
+                    document.getElementById("catalogLookupNote").textContent =
+                        `Saved ${name} locally in this browser. Firestore permission is blocked, but this barcode will still work in the POS here.`;
+                    showToast("Product saved locally in this browser");
+                } else {
+                    showToast(`Failed to save product: ${error.message}`);
+                }
             }
         }
 
@@ -1623,7 +1706,16 @@
                 showToast("Demo products added");
             } catch (error) {
                 console.error("Failed to seed demo products:", error);
-                showToast(`Failed to add demo products: ${error.message}`);
+                if (isPermissionError(error)) {
+                    demoProducts.forEach((product) => {
+                        upsertLocalProduct(product);
+                    });
+                    state.firestoreBlocked = true;
+                    await fetchProducts();
+                    showToast("Demo products saved locally in this browser");
+                } else {
+                    showToast(`Failed to add demo products: ${error.message}`);
+                }
             }
         }
 
@@ -1641,7 +1733,18 @@
                 showToast("Product deleted");
             } catch (error) {
                 console.error("Failed to delete product:", error);
-                showToast(`Failed to delete product: ${error.message}`);
+                if (isPermissionError(error)) {
+                    removeLocalProduct(code);
+                    state.cart = state.cart.filter((item) => item.scanCode !== code);
+                    await fetchProducts();
+                    renderCart();
+                    if (document.getElementById("catalogBarcode").value.trim() === code) {
+                        resetCatalogForm();
+                    }
+                    showToast("Product deleted from local browser storage");
+                } else {
+                    showToast(`Failed to delete product: ${error.message}`);
+                }
             }
         }
 
@@ -1726,7 +1829,43 @@
                 showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`);
             } catch (error) {
                 console.error("Failed to complete sale:", error);
-                showToast(`Failed to save sale: ${error.message}`);
+                if (isPermissionError(error)) {
+                    for (const item of state.cart) {
+                        const currentProduct = await lookupProduct(item.scanCode);
+                        if (!currentProduct) {
+                            continue;
+                        }
+
+                        upsertLocalProduct({
+                            ...currentProduct,
+                            stock: Math.max(0, Number(currentProduct.stock || 0) - item.quantity)
+                        });
+                    }
+
+                    appendLocalSale({
+                        ...saleData,
+                        createdAtText: new Date().toLocaleString()
+                    });
+
+                    state.lastSale = {
+                        ...saleData,
+                        createdAtText: new Date().toLocaleString(),
+                        items: state.cart.map((item) => ({
+                            ...item,
+                            lineTotal: item.quantity * item.price
+                        }))
+                    };
+                    state.firestoreBlocked = true;
+                    updatePrintButton();
+                    await fetchProducts();
+                    clearCart({ silent: true });
+                    const result = document.getElementById("posLookupResult");
+                    result.className = "lookup-result empty";
+                    result.textContent = "Sale saved locally. Scan or enter the next product to start a new cart.";
+                    showToast("Sale saved locally in this browser");
+                } else {
+                    showToast(`Failed to save sale: ${error.message}`);
+                }
             }
         }
 
