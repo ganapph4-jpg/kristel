@@ -690,6 +690,53 @@
             margin-bottom: 14px;
         }
 
+        .settings-tabs {
+            display: inline-flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .settings-tab-btn {
+            border: none;
+            border-radius: 16px;
+            padding: 11px 16px;
+            font-size: 0.94rem;
+            font-weight: 800;
+            color: var(--ink);
+            background: #fff7ef;
+            border: 1px solid rgba(251, 146, 60, 0.18);
+            cursor: pointer;
+        }
+
+        .settings-tab-btn.active {
+            background: linear-gradient(135deg, var(--brand), #ff8a3d);
+            color: #fff;
+        }
+
+        .settings-tab-panel {
+            display: none;
+        }
+
+        .settings-tab-panel.active {
+            display: block;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .tool-card {
+            border: 1px solid #efd7be;
+            background: #fffdf9;
+            border-radius: 22px;
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
         .owner-password-error {
             color: #991b1b;
             font-size: 0.9rem;
@@ -1229,23 +1276,45 @@
             <div class="owner-note">
                 <i class="fas fa-shield-halved"></i> Owner settings shows daily sales, sales history, and all low-stock products in one place.
             </div>
-            <div class="page-grid settings">
-                <div class="left-stack">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-chart-line"></i> Daily Sales Dashboard</h2>
-                            <div class="inline-actions">
-                                <button id="refreshOwnerReportsBtn" class="btn-ghost">
-                                    <i class="fas fa-arrows-rotate"></i> Refresh Reports
-                                </button>
+            <div class="settings-tabs">
+                <button id="settingsReportsTabBtn" class="settings-tab-btn active" data-settings-tab="reports">
+                    <i class="fas fa-chart-line"></i> Reports
+                </button>
+                <button id="settingsToolsTabBtn" class="settings-tab-btn" data-settings-tab="tools">
+                    <i class="fas fa-toolbox"></i> Backup And Reset
+                </button>
+            </div>
+
+            <div id="settingsReportsPanel" class="settings-tab-panel active">
+                <div class="page-grid settings">
+                    <div class="left-stack">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-chart-line"></i> Daily Sales Dashboard</h2>
+                                <div class="inline-actions">
+                                    <button id="refreshOwnerReportsBtn" class="btn-ghost">
+                                        <i class="fas fa-arrows-rotate"></i> Refresh Reports
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="dailySalesStats" class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-label">Today's Sales</div>
+                                        <div class="stat-value">PHP 0.00</div>
+                                        <div class="muted">Waiting for sales data.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div id="dailySalesStats" class="stats-grid">
-                                <div class="stat-card">
-                                    <div class="stat-label">Today's Sales</div>
-                                    <div class="stat-value">PHP 0.00</div>
-                                    <div class="muted">Waiting for sales data.</div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-clock-rotate-left"></i> Sales History</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="salesHistoryList" class="report-list">
+                                    <div class="empty-state">Sales history will appear here after loading from Firestore.</div>
                                 </div>
                             </div>
                         </div>
@@ -1253,35 +1322,83 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h3><i class="fas fa-clock-rotate-left"></i> Sales History</h3>
+                            <h3><i class="fas fa-triangle-exclamation"></i> Low Stock Products</h3>
+                            <div class="inline-actions">
+                                <div id="lowStockCountBadge" class="low-stock-count">0</div>
+                                <button id="openLowStockModalBtn" class="btn-danger">
+                                    <i class="fas fa-list"></i> Show All Low Stocks
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div id="salesHistoryList" class="report-list">
-                                <div class="empty-state">Sales history will appear here after loading from Firestore.</div>
+                            <div class="manual-input" style="margin-bottom: 14px;">
+                                <input id="lowStockThresholdInput" type="number" min="0" step="1" placeholder="Low stock minimum">
+                                <button id="saveLowStockThresholdBtn" class="btn-ghost">
+                                    <i class="fas fa-pen"></i> Update
+                                </button>
+                            </div>
+                            <div id="lowStockSummary" class="lookup-result empty">
+                                Low stock summary will appear here after loading from Firestore.
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-triangle-exclamation"></i> Low Stock Products</h3>
-                        <div class="inline-actions">
-                            <div id="lowStockCountBadge" class="low-stock-count">0</div>
-                            <button id="openLowStockModalBtn" class="btn-danger">
-                                <i class="fas fa-list"></i> Show All Low Stocks
+            <div id="settingsToolsPanel" class="settings-tab-panel">
+                <div class="tools-grid">
+                    <div class="tool-card">
+                        <div>
+                            <h3><i class="fas fa-download"></i> Backup</h3>
+                            <p class="muted">Download your products and sales as backup files.</p>
+                        </div>
+                        <div class="button-row">
+                            <button id="backupProductsBtn" class="btn-ghost">
+                                <i class="fas fa-boxes-stacked"></i> Backup Products
+                            </button>
+                            <button id="backupSalesBtn" class="btn-ghost">
+                                <i class="fas fa-receipt"></i> Backup Sales
+                            </button>
+                            <button id="backupAllBtn" class="btn-secondary">
+                                <i class="fas fa-database"></i> Backup All
                             </button>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="manual-input" style="margin-bottom: 14px;">
-                            <input id="lowStockThresholdInput" type="number" min="0" step="1" placeholder="Low stock minimum">
-                            <button id="saveLowStockThresholdBtn" class="btn-ghost">
-                                <i class="fas fa-pen"></i> Update
+
+                    <div class="tool-card">
+                        <div>
+                            <h3><i class="fas fa-upload"></i> Restore</h3>
+                            <p class="muted">Upload a JSON backup created by this app to restore products, sales, or the full store backup.</p>
+                        </div>
+                        <div class="button-row">
+                            <button id="restoreProductsBtn" class="btn-ghost">
+                                <i class="fas fa-boxes-stacked"></i> Restore Products
+                            </button>
+                            <button id="restoreSalesBtn" class="btn-ghost">
+                                <i class="fas fa-receipt"></i> Restore Sales
+                            </button>
+                            <button id="restoreAllBtn" class="btn-secondary">
+                                <i class="fas fa-database"></i> Restore All
                             </button>
                         </div>
-                        <div id="lowStockSummary" class="lookup-result empty">
-                            Low stock summary will appear here after loading from Firestore.
+                        <input id="restoreBackupInput" type="file" accept=".json,application/json" hidden>
+                    </div>
+
+                    <div class="tool-card">
+                        <div>
+                            <h3><i class="fas fa-rotate-left"></i> Reset Tools</h3>
+                            <p class="muted">Quick resets for the owner workspace without deleting Firestore data.</p>
+                        </div>
+                        <div class="button-row">
+                            <button id="resetPosViewBtn" class="btn-ghost">
+                                <i class="fas fa-cash-register"></i> Reset POS View
+                            </button>
+                            <button id="resetProductEntryBtn" class="btn-ghost">
+                                <i class="fas fa-pen-to-square"></i> Reset Product Form
+                            </button>
+                            <button id="resetLowStockThresholdBtn" class="btn-danger">
+                                <i class="fas fa-gauge-simple"></i> Reset Low Stock
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1477,10 +1594,12 @@
             lastSale: null,
             currentPage: "posPage",
             ownerUnlocked: false,
+            settingsTab: "reports",
             beepReady: false,
             audioContext: null,
             catalogImageData: "",
             lowStockThreshold: 3,
+            pendingRestoreType: "",
             scanner: {
                 active: false,
                 mode: null,
@@ -1698,6 +1817,243 @@
             syncCatalogPreviewFromForm();
             showToast(`Low stock minimum updated to ${state.lowStockThreshold}`, "success");
         }
+
+        function switchSettingsTab(tabId) {
+            state.settingsTab = tabId;
+            document.querySelectorAll(".settings-tab-btn").forEach((button) => {
+                button.classList.toggle("active", button.dataset.settingsTab === tabId);
+            });
+            document.getElementById("settingsReportsPanel").classList.toggle("active", tabId === "reports");
+            document.getElementById("settingsToolsPanel").classList.toggle("active", tabId === "tools");
+        }
+
+        function downloadTextFile(filename, content, mimeType = "application/json") {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function backupProducts() {
+            downloadTextFile(
+                `products-backup-${new Date().toISOString().slice(0, 10)}.json`,
+                JSON.stringify(state.products, null, 2)
+            );
+            showToast("Products backup downloaded", "success");
+        }
+
+        function backupSales() {
+            const payload = state.sales.map((sale) => ({
+                ...sale,
+                createdAtDate: sale.createdAtDate ? sale.createdAtDate.toISOString() : null
+            }));
+            downloadTextFile(
+                `sales-backup-${new Date().toISOString().slice(0, 10)}.json`,
+                JSON.stringify(payload, null, 2)
+            );
+            showToast("Sales backup downloaded", "success");
+        }
+
+        function backupAllData() {
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                lowStockThreshold: state.lowStockThreshold,
+                products: state.products,
+                sales: state.sales.map((sale) => ({
+                    ...sale,
+                    createdAtDate: sale.createdAtDate ? sale.createdAtDate.toISOString() : null
+                }))
+            };
+            downloadTextFile(
+                `store-backup-${new Date().toISOString().slice(0, 10)}.json`,
+                JSON.stringify(payload, null, 2)
+            );
+            showToast("Full backup downloaded", "success");
+        }
+
+        function openRestorePicker(type) {
+            state.pendingRestoreType = type;
+            const input = document.getElementById("restoreBackupInput");
+            input.value = "";
+            input.click();
+        }
+
+        async function readJsonFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        resolve(JSON.parse(String(reader.result || "")));
+                    } catch (error) {
+                        reject(new Error("Invalid JSON backup file"));
+                    }
+                };
+                reader.onerror = () => reject(new Error("Failed to read backup file"));
+                reader.readAsText(file);
+            });
+        }
+
+        async function restoreProductsFromData(products) {
+            if (!Array.isArray(products) || !products.length) {
+                return 0;
+            }
+
+            let restored = 0;
+            let batch = writeBatch(db);
+            let operations = 0;
+
+            for (const product of products) {
+                const normalized = normalizeProductRecord(product, product.id || product.scanCode || product.barcode || "");
+                if (!normalized.scanCode) {
+                    continue;
+                }
+
+                batch.set(doc(db, "products", normalized.scanCode), {
+                    scanCode: normalized.scanCode,
+                    barcode: normalized.scanCode,
+                    codeType: normalized.codeType || "barcode",
+                    name: normalized.name,
+                    category: normalized.category || "",
+                    price: Number(normalized.price || 0),
+                    stock: Number(normalized.stock || 0),
+                    unit: normalized.unit || "",
+                    notes: normalized.notes || "",
+                    imageData: normalized.imageData || "",
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                restored += 1;
+                operations += 1;
+
+                if (operations >= 400) {
+                    await batch.commit();
+                    batch = writeBatch(db);
+                    operations = 0;
+                }
+            }
+
+            if (operations > 0) {
+                await batch.commit();
+            }
+
+            return restored;
+        }
+
+        async function restoreSalesFromData(sales) {
+            if (!Array.isArray(sales) || !sales.length) {
+                return 0;
+            }
+
+            let restored = 0;
+            let batch = writeBatch(db);
+            let operations = 0;
+
+            for (const sale of sales) {
+                const normalized = normalizeSaleRecord(sale, sale.id || sale.saleId || "");
+                const docId = normalized.id || normalized.saleId || `RESTORE-${Date.now()}-${restored}`;
+                const createdAtValue = sale.createdAtDate ? new Date(sale.createdAtDate) : (normalized.createdAtDate || new Date());
+
+                batch.set(doc(db, "sales", docId), {
+                    saleId: normalized.saleId || docId,
+                    total: Number(normalized.total || 0),
+                    cashReceived: Number(normalized.cashReceived || 0),
+                    change: Number(normalized.change || 0),
+                    status: sale.status || "completed",
+                    createdAt: createdAtValue,
+                    items: Array.isArray(sale.items) ? sale.items : []
+                }, { merge: true });
+                restored += 1;
+                operations += 1;
+
+                if (operations >= 400) {
+                    await batch.commit();
+                    batch = writeBatch(db);
+                    operations = 0;
+                }
+            }
+
+            if (operations > 0) {
+                await batch.commit();
+            }
+
+            return restored;
+        }
+
+        async function restoreBackupFile(file) {
+            if (!file) {
+                return;
+            }
+
+            try {
+                const payload = await readJsonFile(file);
+                const type = state.pendingRestoreType;
+                let restoredProducts = 0;
+                let restoredSales = 0;
+
+                if (type === "products") {
+                    restoredProducts = await restoreProductsFromData(payload);
+                } else if (type === "sales") {
+                    restoredSales = await restoreSalesFromData(payload);
+                } else {
+                    restoredProducts = await restoreProductsFromData(payload.products || []);
+                    restoredSales = await restoreSalesFromData(payload.sales || []);
+                    if (Number.isFinite(Number(payload.lowStockThreshold))) {
+                        state.lowStockThreshold = Math.max(0, Math.floor(Number(payload.lowStockThreshold)));
+                    }
+                }
+
+                await fetchProducts();
+                await fetchSales({ silent: true });
+                syncLowStockThresholdInput();
+                showToast(`Restore complete. Products: ${restoredProducts}, Sales: ${restoredSales}`, "success");
+            } catch (error) {
+                console.error("Restore failed:", error);
+                showToast(`Failed to restore backup: ${error.message}`, "error");
+            } finally {
+                state.pendingRestoreType = "";
+                document.getElementById("restoreBackupInput").value = "";
+            }
+        }
+
+        function resetPosView() {
+            clearCart({ silent: true });
+            renderPosLookup(null, "");
+            document.getElementById("posManualBarcode").value = "";
+            document.getElementById("posProductSearchInput").value = "";
+            renderManualBarcodeMatches("pos");
+            renderPosSearchResults();
+            switchPage("posPage");
+            showToast("POS view reset", "success");
+        }
+
+        function resetProductEntry() {
+            resetCatalogForm();
+            document.getElementById("catalogManualBarcode").value = "";
+            document.getElementById("catalogSearchInput").value = "";
+            renderManualBarcodeMatches("catalog");
+            renderCatalogProducts();
+            closeSavedProductsModal();
+            closeCatalogFormModal();
+            switchPage("catalogPage");
+            showToast("Product form reset", "success");
+        }
+
+        function resetLowStockThreshold() {
+            state.lowStockThreshold = 3;
+            syncLowStockThresholdInput();
+            renderOwnerReports();
+            renderPosSearchResults();
+            renderManualBarcodeMatches("pos");
+            renderManualBarcodeMatches("catalog");
+            renderCart();
+            syncCatalogPreviewFromForm();
+            showToast("Low stock minimum reset to 3", "success");
+        }
+
         function switchPage(pageId) {
             state.currentPage = pageId;
             stopScanner(false);
@@ -1712,6 +2068,7 @@
 
             if (pageId === "settingsPage") {
                 renderOwnerReports();
+                switchSettingsTab(state.settingsTab || "reports");
             }
         }
 
@@ -3177,11 +3534,26 @@
                 switchPage(button.dataset.page);
             });
         });
+        document.getElementById("settingsReportsTabBtn").addEventListener("click", () => switchSettingsTab("reports"));
+        document.getElementById("settingsToolsTabBtn").addEventListener("click", () => switchSettingsTab("tools"));
         document.getElementById("openSettingsBtn").addEventListener("click", openOwnerSettings);
         document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
         document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
         document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
         document.getElementById("saveLowStockThresholdBtn").addEventListener("click", saveLowStockThreshold);
+        document.getElementById("backupProductsBtn").addEventListener("click", backupProducts);
+        document.getElementById("backupSalesBtn").addEventListener("click", backupSales);
+        document.getElementById("backupAllBtn").addEventListener("click", backupAllData);
+        document.getElementById("restoreProductsBtn").addEventListener("click", () => openRestorePicker("products"));
+        document.getElementById("restoreSalesBtn").addEventListener("click", () => openRestorePicker("sales"));
+        document.getElementById("restoreAllBtn").addEventListener("click", () => openRestorePicker("all"));
+        document.getElementById("restoreBackupInput").addEventListener("change", async (event) => {
+            const [file] = event.target.files || [];
+            await restoreBackupFile(file);
+        });
+        document.getElementById("resetPosViewBtn").addEventListener("click", resetPosView);
+        document.getElementById("resetProductEntryBtn").addEventListener("click", resetProductEntry);
+        document.getElementById("resetLowStockThresholdBtn").addEventListener("click", resetLowStockThreshold);
 
         document.getElementById("togglePosScannerBtn").addEventListener("click", () => {
             if (state.scanner.active && state.scanner.mode === "pos") {
@@ -3339,6 +3711,7 @@
         renderPosLookup(null, "");
         renderPosSearchResults();
         renderOwnerReports();
+        switchSettingsTab(state.settingsTab);
         syncLowStockThresholdInput();
         updatePrintButton();
         fetchProducts();
