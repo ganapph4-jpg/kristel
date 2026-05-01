@@ -173,6 +173,53 @@
             grid-template-columns: minmax(0, 1fr) 380px;
         }
 
+        #posPage .cart-panel {
+            grid-template-rows: auto auto;
+            align-self: start;
+        }
+
+        #posPage .cart-summary {
+            border-top: 0;
+            gap: 18px;
+        }
+
+        .sale-total-box {
+            border: 1px solid #f2c7b9;
+            border-radius: 24px;
+            background: #fff7f2;
+            padding: 22px 18px;
+            text-align: center;
+        }
+
+        .sale-total-label {
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .sale-total-amount {
+            color: var(--danger);
+            font-size: 2.8rem;
+            font-weight: 950;
+            line-height: 1.05;
+            margin-top: 8px;
+            word-break: break-word;
+        }
+
+        .quick-cash-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .quick-cash-btn {
+            justify-content: center;
+            padding-inline: 8px;
+            min-height: 44px;
+            font-weight: 900;
+        }
+
         .page-grid.catalog {
             grid-template-columns: 1fr;
         }
@@ -451,6 +498,21 @@
             padding: 20px;
             color: #fff;
             background: linear-gradient(135deg, var(--brand), #ff8a3d);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .cart-header .icon-btn {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--brand);
+            flex-shrink: 0;
+        }
+
+        .cart-header .icon-btn.connected {
+            color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(20, 108, 67, 0.18);
         }
 
         .cart-items {
@@ -460,6 +522,75 @@
             overflow-y: auto;
             display: grid;
             gap: 12px;
+        }
+
+        .pos-product-list {
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            max-height: 420px;
+            padding: 10px;
+            gap: 8px;
+        }
+
+        .pos-product-list .empty-state {
+            padding: 16px 12px;
+            font-size: 0.9rem;
+        }
+
+        .pos-product-list .cart-item {
+            border-radius: 14px;
+            padding: 10px;
+            gap: 8px;
+        }
+
+        .pos-product-list .cart-item-row {
+            gap: 8px;
+        }
+
+        .pos-product-list .cart-item-row > div:first-child {
+            gap: 8px !important;
+            min-width: 0;
+        }
+
+        .pos-product-list .cart-thumb {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+        }
+
+        .pos-product-list .cart-name {
+            font-size: 0.94rem;
+            line-height: 1.2;
+        }
+
+        .pos-product-list .cart-sub {
+            font-size: 0.78rem;
+        }
+
+        .pos-product-list .price-pill {
+            padding: 6px 8px;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+
+        .pos-product-list .qty-row {
+            gap: 8px;
+        }
+
+        .pos-product-list .qty-controls {
+            padding: 4px 6px;
+            gap: 8px;
+        }
+
+        .pos-product-list .qty-btn {
+            width: 26px;
+            height: 26px;
+        }
+
+        .pos-product-list .remove-btn {
+            padding: 6px 8px;
+            font-size: 0.8rem;
         }
 
         .empty-state {
@@ -577,6 +708,65 @@
         .payment-note {
             color: #8a4b0f;
             font-size: 0.9rem;
+        }
+
+        .toggle-row {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: #fffdf9;
+        }
+
+        .toggle-row strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 58px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+            background: #d1d5db;
+            cursor: pointer;
+            transition: 0.18s ease;
+        }
+
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            left: 4px;
+            top: 4px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+            transition: 0.18s ease;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(26px);
         }
 
         .product-list {
@@ -1171,55 +1361,20 @@
                 <div class="left-stack">
                     <div class="card">
                         <div class="card-header">
-                            <h2><i class="fas fa-barcode"></i> Scan Product For Sale</h2>
-                            <div class="inline-actions">
-                                <button id="togglePosScannerBtn" class="btn-primary">
-                                    <i class="fas fa-camera"></i> Open Camera
-                                </button>
-                            </div>
+                            <h2><i class="fas fa-barcode"></i> Manual Barcode</h2>
                         </div>
-                            <div class="card-body">
+                        <div class="card-body">
                             <div class="scanner-shell">
-                                <div class="catalog-note">
-                                    <i class="fas fa-camera"></i> Scan with camera or enter the barcode manually.
-                                </div>
                                 <div class="manual-input">
                                     <input id="posManualBarcode" type="text" placeholder="Enter barcode manually">
                                     <button id="posManualLookupBtn" class="btn-secondary">
                                         <i class="fas fa-plus"></i> Add To Cart
                                     </button>
                                 </div>
-                                <div class="hardware-status active">
-                                    <strong>Scanner:</strong> Eyoyo HID scanner works directly after Windows Bluetooth pairing. No browser scanner connection is needed.
-                                </div>
-                                <div id="posBarcodeMatches" class="search-results">
-                                    <div class="empty-state">Matching barcodes will appear here.</div>
-                                </div>
-                                <p class="muted">Scan a product to add it to the current sale.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-receipt"></i> Last Scanned Product</h3>
-                        </div>
-                        <div class="card-body">
-                            <div id="posLookupResult" class="lookup-result empty">
-                                Ready to scan a product.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-magnifying-glass"></i> Search Product By Name</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="scanner-shell">
-                                <input id="posProductSearchInput" type="text" placeholder="Type product name to search">
-                                <div id="posSearchResults" class="search-results">
-                                    <div class="empty-state">Search results will appear here.</div>
+                                <div id="cartItemsList" class="cart-items pos-product-list">
+                                    <div class="empty-state">
+                                        Scanned products will show here.
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1229,38 +1384,35 @@
                 <div class="cart-panel">
                     <div class="cart-header">
                         <h2><i class="fas fa-shopping-cart"></i> Current Sale</h2>
-                        <p style="margin-top: 6px; opacity: 0.9;">Total updates from your saved products database.</p>
-                    </div>
-                    <div id="cartItemsList" class="cart-items">
-                        <div class="empty-state">
-                            No items in the cart yet.
-                        </div>
+                        <button id="openPrinterModalBtn" class="icon-btn" title="Thermal Printer" aria-label="Thermal Printer">
+                            <i class="fas fa-print"></i>
+                        </button>
                     </div>
                     <div class="cart-summary">
-                        <div class="summary-row total">
-                            <span>Total</span>
-                            <span id="cartTotalAmount">PHP 0.00</span>
+                        <div class="sale-total-box">
+                            <div class="sale-total-label">Total Amount</div>
+                            <div id="cartTotalAmount" class="sale-total-amount">PHP 0.00</div>
                         </div>
                         <div class="cash-field">
-                            <input id="cashReceivedInput" type="number" min="0" step="0.01" placeholder="Cash received">
+                            <input id="cashReceivedInput" type="number" min="0" step="0.01" placeholder="Receive money">
                             <button id="applyCashBtn" class="btn-ghost">
                                 <i class="fas fa-money-bill-wave"></i> Compute
                             </button>
+                        </div>
+                        <div class="quick-cash-grid" aria-label="Quick receive money buttons">
+                            <button type="button" class="btn-ghost quick-cash-btn" data-cash-amount="100">100</button>
+                            <button type="button" class="btn-ghost quick-cash-btn" data-cash-amount="300">300</button>
+                            <button type="button" class="btn-ghost quick-cash-btn" data-cash-amount="500">500</button>
+                            <button type="button" class="btn-ghost quick-cash-btn" data-cash-amount="1000">1000</button>
                         </div>
                         <div class="summary-row change">
                             <span>Change</span>
                             <span id="changeAmount">PHP 0.00</span>
                         </div>
                         <div id="paymentNote" class="payment-note">Enter the customer's payment to see the change.</div>
-                        <div id="printerConnectionStatus" class="hardware-status">
-                            <strong>Thermal printer:</strong> No printer connected yet.
-                        </div>
                         <div class="button-row">
                             <button id="checkoutBtn" class="btn-secondary" style="flex: 1;">
                                 <i class="fas fa-check-circle"></i> Complete Sale
-                            </button>
-                            <button id="openPrinterModalBtn" class="btn-ghost">
-                                <i class="fas fa-print"></i> Printer
                             </button>
                             <button id="printReceiptBtn" class="btn-print" disabled>
                                 <i class="fas fa-print"></i> Print Receipt
@@ -1489,9 +1641,19 @@
             <div id="printerModalStatus" class="hardware-status">
                 <strong>Printer status:</strong> No printer connected yet.
             </div>
+            <div class="toggle-row">
+                <div>
+                    <strong>Automatic Receipt</strong>
+                    <div class="muted">Print receipt automatically after completing a sale.</div>
+                </div>
+                <label class="toggle-switch" for="autoReceiptToggle">
+                    <input id="autoReceiptToggle" type="checkbox">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
             <div class="button-row">
                 <button id="searchPrinterDeviceBtn" type="button" class="btn-primary">
-                    <i class="fas fa-magnifying-glass"></i> Search Available Device
+                    <i class="fab fa-bluetooth-b"></i> Search / Pair Thermal Printer
                 </button>
                 <button id="disconnectPrinterBtn" type="button" class="btn-ghost">
                     <i class="fas fa-plug-circle-xmark"></i> Disconnect
@@ -1728,6 +1890,7 @@
             barcodeSuggestionCache: {},
             lowStockThreshold: 3,
             pendingRestoreType: "",
+            autoReceiptEnabled: localStorage.getItem("kristelAutoReceipt") === "true",
             scanner: {
                 active: false,
                 mode: null,
@@ -1742,6 +1905,8 @@
                 serialPort: null,
                 serialConnected: false,
                 bluetoothDevice: null,
+                bluetoothServer: null,
+                bluetoothCharacteristic: null,
                 bluetoothConnected: false,
                 deviceLabel: "",
                 connectionType: ""
@@ -1905,6 +2070,26 @@
                 '<i class="fas fa-camera"></i> Save And Scan Next',
                 '<i class="fas fa-spinner fa-spin"></i> Saving And Opening Camera...'
             );
+        }
+
+        function setPrinterSearchButtonsLoading(isLoading) {
+            const idleHtml = '<i class="fab fa-bluetooth-b"></i> Search / Pair Thermal Printer';
+            const loadingHtml = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+            setButtonLoading("searchPrinterDeviceBtn", isLoading, idleHtml, loadingHtml);
+        }
+
+        function syncAutoReceiptToggle() {
+            const toggle = document.getElementById("autoReceiptToggle");
+            if (toggle) {
+                toggle.checked = Boolean(state.autoReceiptEnabled);
+            }
+        }
+
+        function setAutoReceiptEnabled(enabled) {
+            state.autoReceiptEnabled = Boolean(enabled);
+            localStorage.setItem("kristelAutoReceipt", state.autoReceiptEnabled ? "true" : "false");
+            syncAutoReceiptToggle();
+            showToast(state.autoReceiptEnabled ? "Automatic receipt enabled" : "Automatic receipt disabled", "info");
         }
 
         function updateProductCount() {
@@ -2193,7 +2378,10 @@
             clearCart({ silent: true });
             renderPosLookup(null, "");
             document.getElementById("posManualBarcode").value = "";
-            document.getElementById("posProductSearchInput").value = "";
+            const posSearchInput = document.getElementById("posProductSearchInput");
+            if (posSearchInput) {
+                posSearchInput.value = "";
+            }
             renderManualBarcodeMatches("pos");
             renderPosSearchResults();
             switchPage("posPage");
@@ -2231,17 +2419,20 @@
                 const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
                 return {
                     statusClass: "connected",
-                    summary: `Serial printer connected.${deviceText}`,
-                    detail: "Browser printer connection is active for this POS."
+                    summary: `Connected: Serial printer.${deviceText}`,
+                    detail: "Receipt can print directly through the connected serial printer."
                 };
             }
 
             if (printer.bluetoothConnected) {
                 const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
+                const directText = printer.bluetoothCharacteristic
+                    ? "Direct Bluetooth receipt printing is ready."
+                    : "Bluetooth printer is paired. If direct Bluetooth write is not available, receipt printing will fall back to browser print.";
                 return {
                     statusClass: "connected",
-                    summary: `Bluetooth printer selected.${deviceText}`,
-                    detail: "Bluetooth printer device access was approved in the browser."
+                    summary: `Connected: Bluetooth printer.${deviceText}`,
+                    detail: directText
                 };
             }
 
@@ -2249,22 +2440,21 @@
                 const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
                 return {
                     statusClass: "connected",
-                    summary: `HID printer selected.${deviceText}`,
-                    detail: "HID printer device access was approved in the browser."
+                    summary: `Connected: HID printer.${deviceText}`,
+                    detail: "HID printer access is approved. Receipt printing will use browser print unless the device exposes a writable printer channel."
                 };
             }
 
             return {
                 statusClass: "",
-                summary: "No printer connected yet.",
-                detail: "Search for a thermal printer here, or keep using normal browser receipt printing through Windows."
+                summary: "Not connected. Click Search / Pair Thermal Printer.",
+                detail: "Search and pair your Bluetooth, serial, or HID thermal printer."
             };
         }
 
         function updatePrinterStatus() {
             const uiState = getPrinterStatusState();
             const targets = [
-                document.getElementById("printerConnectionStatus"),
                 document.getElementById("printerModalStatus")
             ];
 
@@ -2287,11 +2477,25 @@
 
             const searchButton = document.getElementById("searchPrinterDeviceBtn");
             const disconnectButton = document.getElementById("disconnectPrinterBtn");
+            const headerPrinterButton = document.getElementById("openPrinterModalBtn");
+            const printerSearchDisabled = !("hid" in navigator) && !("bluetooth" in navigator) && !("serial" in navigator);
+            const printerConnected = state.printer.hidConnected || state.printer.bluetoothConnected || state.printer.serialConnected;
             if (searchButton) {
-                searchButton.disabled = !("hid" in navigator) && !("bluetooth" in navigator) && !("serial" in navigator);
+                searchButton.disabled = printerSearchDisabled;
             }
             if (disconnectButton) {
-                disconnectButton.disabled = !state.printer.hidConnected && !state.printer.bluetoothConnected && !state.printer.serialConnected;
+                disconnectButton.disabled = !printerConnected;
+            }
+            if (headerPrinterButton) {
+                headerPrinterButton.classList.toggle("connected", printerConnected);
+                headerPrinterButton.title = printerConnected ? uiState.summary : "Connect Thermal Printer";
+                headerPrinterButton.setAttribute("aria-label", headerPrinterButton.title);
+            }
+            const printReceiptButton = document.getElementById("printReceiptBtn");
+            if (printReceiptButton && state.lastSale) {
+                printReceiptButton.innerHTML = printerConnected
+                    ? '<i class="fas fa-print"></i> Print Receipt'
+                    : '<i class="fas fa-print"></i> Print Receipt';
             }
         }
 
@@ -2302,6 +2506,7 @@
             closeCatalogFormModal();
             closeSavedProductsModal();
             updatePrinterStatus();
+            syncAutoReceiptToggle();
             const modal = document.getElementById("printerModal");
             modal.classList.add("active");
             modal.setAttribute("aria-hidden", "false");
@@ -2347,6 +2552,8 @@
             printer.serialPort = null;
             printer.serialConnected = false;
             printer.bluetoothDevice = null;
+            printer.bluetoothServer = null;
+            printer.bluetoothCharacteristic = null;
             printer.bluetoothConnected = false;
             printer.deviceLabel = "";
             printer.connectionType = "";
@@ -2383,6 +2590,39 @@
             }
         }
 
+        const BLUETOOTH_PRINTER_SERVICES = [
+            "000018f0-0000-1000-8000-00805f9b34fb",
+            "0000ff00-0000-1000-8000-00805f9b34fb",
+            "0000ffe0-0000-1000-8000-00805f9b34fb",
+            "e7810a71-73ae-499d-8c15-faa9aef0c3f2",
+            "49535343-fe7d-4ae5-8fa9-9fafd205e455"
+        ];
+
+        async function findBluetoothPrinterCharacteristic(server) {
+            if (!server || typeof server.getPrimaryService !== "function") {
+                return null;
+            }
+
+            for (const serviceId of BLUETOOTH_PRINTER_SERVICES) {
+                try {
+                    const service = await server.getPrimaryService(serviceId);
+                    const characteristics = await service.getCharacteristics();
+                    const writable = characteristics.find((characteristic) => (
+                        characteristic.properties?.writeWithoutResponse
+                        || characteristic.properties?.write
+                    ));
+
+                    if (writable) {
+                        return writable;
+                    }
+                } catch (error) {
+                    console.warn("Bluetooth printer service check skipped:", serviceId, error);
+                }
+            }
+
+            return null;
+        }
+
         async function activatePrinterBluetoothDevice(device, options = {}) {
             const { showToastMessage = true, closeModal = true } = options;
 
@@ -2390,10 +2630,14 @@
             state.printer.bluetoothConnected = true;
             state.printer.deviceLabel = device?.name || "Bluetooth printer";
             state.printer.connectionType = "bluetooth";
+            state.printer.bluetoothServer = null;
+            state.printer.bluetoothCharacteristic = null;
 
             if (device?.gatt) {
                 try {
-                    await device.gatt.connect();
+                    const server = await device.gatt.connect();
+                    state.printer.bluetoothServer = server;
+                    state.printer.bluetoothCharacteristic = await findBluetoothPrinterCharacteristic(server);
                 } catch (error) {
                     console.warn("Printer Bluetooth GATT connect warning:", error);
                 }
@@ -2403,6 +2647,8 @@
                 device.addEventListener("gattserverdisconnected", () => {
                     if (state.printer.bluetoothDevice === device) {
                         state.printer.bluetoothDevice = null;
+                        state.printer.bluetoothServer = null;
+                        state.printer.bluetoothCharacteristic = null;
                         state.printer.bluetoothConnected = false;
                         state.printer.deviceLabel = "";
                         state.printer.connectionType = "";
@@ -2419,7 +2665,7 @@
             }
 
             if (showToastMessage) {
-                showToast("Thermal printer selected by Bluetooth", "success");
+                showToast("Thermal printer connected by Bluetooth", "success");
             }
         }
 
@@ -2485,20 +2731,15 @@
         }
 
         async function searchAvailablePrinterDevice() {
+            setPrinterSearchButtonsLoading(true);
             await disconnectPrinter(false);
 
             try {
-                if ("hid" in navigator && window.isSecureContext) {
-                    const hidDevices = await navigator.hid.requestDevice({ filters: [] });
-                    const [hidDevice] = hidDevices || [];
-                    if (hidDevice) {
-                        await activatePrinterHidDevice(hidDevice);
-                        return;
-                    }
-                }
-
                 if ("bluetooth" in navigator && window.isSecureContext) {
-                    const bluetoothDevice = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+                    const bluetoothDevice = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: BLUETOOTH_PRINTER_SERVICES
+                    });
                     if (bluetoothDevice) {
                         await activatePrinterBluetoothDevice(bluetoothDevice);
                         return;
@@ -2511,6 +2752,15 @@
                     return;
                 }
 
+                if ("hid" in navigator && window.isSecureContext) {
+                    const hidDevices = await navigator.hid.requestDevice({ filters: [] });
+                    const [hidDevice] = hidDevices || [];
+                    if (hidDevice) {
+                        await activatePrinterHidDevice(hidDevice);
+                        return;
+                    }
+                }
+
                 showToast("Browser printer search is not available here", "error");
             } catch (error) {
                 console.error("Printer device search failed:", error);
@@ -2520,6 +2770,9 @@
                     return;
                 }
                 showToast(`Failed to connect printer: ${error.message}`, "error");
+            } finally {
+                setPrinterSearchButtonsLoading(false);
+                updatePrinterStatus();
             }
         }
 
@@ -3486,6 +3739,9 @@
             const isPos = mode === "pos";
             const input = document.getElementById(isPos ? "posManualBarcode" : "catalogManualBarcode");
             const container = document.getElementById(isPos ? "posBarcodeMatches" : "catalogBarcodeMatches");
+            if (!input || !container) {
+                return;
+            }
             const query = normalizeScannedCode(input.value);
 
             if (!query) {
@@ -3647,6 +3903,9 @@
 
         function renderPosLookup(product, code) {
             const target = document.getElementById("posLookupResult");
+            if (!target) {
+                return;
+            }
 
             if (!product) {
                 target.className = "lookup-result";
@@ -3840,8 +4099,13 @@
             const total = getCartTotal();
             document.getElementById("cartTotalAmount").textContent = formatCurrency(total);
 
+            if (!container) {
+                updatePaymentSummary();
+                return;
+            }
+
             if (!state.cart.length) {
-                container.innerHTML = `<div class="empty-state">No items in the cart yet.</div>`;
+                container.innerHTML = `<div class="empty-state">Scanned products will show here.</div>`;
                 updatePaymentSummary();
                 return;
             }
@@ -3897,7 +4161,11 @@
 
         function renderPosSearchResults() {
             const container = document.getElementById("posSearchResults");
-            const searchValue = document.getElementById("posProductSearchInput").value.trim().toLowerCase();
+            const searchInput = document.getElementById("posProductSearchInput");
+            if (!container || !searchInput) {
+                return;
+            }
+            const searchValue = searchInput.value.trim().toLowerCase();
 
             if (!searchValue) {
                 container.innerHTML = `<div class="empty-state">Search results will appear here.</div>`;
@@ -4344,9 +4612,14 @@
                 await fetchSales({ silent: true });
                 clearCart({ silent: true });
                 const result = document.getElementById("posLookupResult");
-                result.className = "lookup-result empty";
-                result.textContent = "Sale completed. Scan or enter the next product to start a new cart.";
+                if (result) {
+                    result.className = "lookup-result empty";
+                    result.textContent = "Sale completed. Scan or enter the next product to start a new cart.";
+                }
                 showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`, "success");
+                if (state.autoReceiptEnabled) {
+                    await printReceipt({ fallbackToBrowser: false });
+                }
             } catch (error) {
                 console.error("Failed to complete sale:", error);
                 showToast(`Failed to save sale: ${error.message}`, "error");
@@ -4360,7 +4633,119 @@
             }
         }
 
-        function printReceipt() {
+        function padReceiptLine(left, right, width = 32) {
+            const cleanLeft = String(left || "");
+            const cleanRight = String(right || "");
+            const available = Math.max(1, width - cleanRight.length - 1);
+            const clippedLeft = cleanLeft.length > available ? cleanLeft.slice(0, available) : cleanLeft;
+            return `${clippedLeft}${" ".repeat(Math.max(1, width - clippedLeft.length - cleanRight.length))}${cleanRight}`;
+        }
+
+        function buildThermalReceiptText() {
+            const sale = state.lastSale;
+            const lines = [
+                "\x1B@",
+                "\x1Ba\x01",
+                "KRISTEL SARI-SARI STORE",
+                "Receipt",
+                "\x1Ba\x00",
+                "--------------------------------",
+                `Sale ID: ${sale.saleId}`,
+                `Date: ${sale.createdAtText}`,
+                "--------------------------------"
+            ];
+
+            sale.items.forEach((item) => {
+                const quantityLine = `${item.quantity} x ${formatCurrency(item.price)}`;
+                lines.push(String(item.name || "Item").slice(0, 32));
+                lines.push(padReceiptLine(quantityLine, formatCurrency(item.lineTotal)));
+            });
+
+            lines.push(
+                "--------------------------------",
+                padReceiptLine("TOTAL", formatCurrency(sale.total)),
+                padReceiptLine("Cash", formatCurrency(sale.cashReceived)),
+                padReceiptLine("Change", formatCurrency(sale.change)),
+                "--------------------------------",
+                "\x1Ba\x01",
+                "Thank you!",
+                "\n\n\n",
+                "\x1DVA\x00"
+            );
+
+            return `${lines.join("\n")}\n`;
+        }
+
+        async function writePrinterChunks(writeChunk, bytes, chunkSize = 180) {
+            for (let index = 0; index < bytes.length; index += chunkSize) {
+                await writeChunk(bytes.slice(index, index + chunkSize));
+            }
+        }
+
+        async function printReceiptToSerial(bytes) {
+            const port = state.printer.serialPort;
+            if (!port?.writable) {
+                return false;
+            }
+
+            const writer = port.writable.getWriter();
+            try {
+                await writer.write(bytes);
+                return true;
+            } finally {
+                writer.releaseLock();
+            }
+        }
+
+        async function printReceiptToBluetooth(bytes) {
+            const printer = state.printer;
+            const device = printer.bluetoothDevice;
+
+            if (!device?.gatt) {
+                return false;
+            }
+
+            if (!device.gatt.connected) {
+                printer.bluetoothServer = await device.gatt.connect();
+                printer.bluetoothCharacteristic = await findBluetoothPrinterCharacteristic(printer.bluetoothServer);
+                updatePrinterStatus();
+            }
+
+            const characteristic = printer.bluetoothCharacteristic;
+            if (!characteristic) {
+                return false;
+            }
+
+            await writePrinterChunks(async (chunk) => {
+                if (typeof characteristic.writeValueWithoutResponse === "function" && characteristic.properties?.writeWithoutResponse) {
+                    await characteristic.writeValueWithoutResponse(chunk);
+                    return;
+                }
+                await characteristic.writeValue(chunk);
+            }, bytes);
+            return true;
+        }
+
+        async function printReceiptToConnectedPrinter() {
+            const bytes = new TextEncoder().encode(buildThermalReceiptText());
+
+            try {
+                if (state.printer.serialConnected && await printReceiptToSerial(bytes)) {
+                    return true;
+                }
+
+                if (state.printer.bluetoothConnected && await printReceiptToBluetooth(bytes)) {
+                    return true;
+                }
+            } catch (error) {
+                console.error("Direct thermal print failed:", error);
+                showToast(`Direct printer failed: ${error.message}. Opening browser print.`, "error");
+            }
+
+            return false;
+        }
+
+        function printReceiptWithBrowser() {
             if (!state.lastSale) {
                 showToast("Complete a sale first to print a receipt");
                 return;
@@ -4423,6 +4808,27 @@
             printWindow.document.close();
             printWindow.focus();
             printWindow.print();
+        }
+
+        async function printReceipt(options = {}) {
+            const { fallbackToBrowser = true } = options;
+            if (!state.lastSale) {
+                showToast("Complete a sale first to print a receipt");
+                return;
+            }
+
+            const printedDirectly = await printReceiptToConnectedPrinter();
+            if (printedDirectly) {
+                showToast("Receipt sent to connected printer", "success");
+                return;
+            }
+
+            if (!fallbackToBrowser) {
+                showToast("Automatic receipt needs a connected thermal printer", "info");
+                return;
+            }
+
+            printReceiptWithBrowser();
         }
 
         function setScannerButtonState(buttonId, active) {
@@ -4741,7 +5147,13 @@
         document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
         document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
         document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
-        document.getElementById("openPrinterModalBtn").addEventListener("click", openPrinterModal);
+        const openPrinterModalBtn = document.getElementById("openPrinterModalBtn");
+        if (openPrinterModalBtn) {
+            openPrinterModalBtn.addEventListener("click", openPrinterModal);
+        }
+        document.getElementById("autoReceiptToggle").addEventListener("change", (event) => {
+            setAutoReceiptEnabled(event.target.checked);
+        });
         document.getElementById("closePrinterModalBtn").addEventListener("click", closePrinterModal);
         document.getElementById("searchPrinterDeviceBtn").addEventListener("click", searchAvailablePrinterDevice);
         document.getElementById("disconnectPrinterBtn").addEventListener("click", () => disconnectPrinter());
@@ -4760,13 +5172,16 @@
         document.getElementById("resetProductEntryBtn").addEventListener("click", resetProductEntry);
         document.getElementById("resetLowStockThresholdBtn").addEventListener("click", resetLowStockThreshold);
 
-        document.getElementById("togglePosScannerBtn").addEventListener("click", () => {
-            if (state.scanner.active && state.scanner.mode === "pos") {
-                stopScanner();
-            } else {
-                startScanner("pos");
-            }
-        });
+        const togglePosScannerBtn = document.getElementById("togglePosScannerBtn");
+        if (togglePosScannerBtn) {
+            togglePosScannerBtn.addEventListener("click", () => {
+                if (state.scanner.active && state.scanner.mode === "pos") {
+                    stopScanner();
+                } else {
+                    startScanner("pos");
+                }
+            });
+        }
 
         document.getElementById("toggleCatalogScannerBtn").addEventListener("click", () => {
             if (state.scanner.active && state.scanner.mode === "catalog") {
@@ -4873,7 +5288,16 @@
         document.getElementById("clearCartBtn").addEventListener("click", () => clearCart());
         document.getElementById("applyCashBtn").addEventListener("click", updatePaymentSummary);
         document.getElementById("cashReceivedInput").addEventListener("input", updatePaymentSummary);
-        document.getElementById("posProductSearchInput").addEventListener("input", renderPosSearchResults);
+        document.querySelectorAll("[data-cash-amount]").forEach((button) => {
+            button.addEventListener("click", () => {
+                document.getElementById("cashReceivedInput").value = button.dataset.cashAmount;
+                updatePaymentSummary();
+            });
+        });
+        const posProductSearchInput = document.getElementById("posProductSearchInput");
+        if (posProductSearchInput) {
+            posProductSearchInput.addEventListener("input", renderPosSearchResults);
+        }
         document.getElementById("catalogSearchInput").addEventListener("input", renderCatalogProducts);
         [
             "catalogBarcode",
@@ -4969,6 +5393,7 @@
         renderOwnerReports();
         switchSettingsTab(state.settingsTab);
         syncLowStockThresholdInput();
+        syncAutoReceiptToggle();
         updatePrinterStatus();
         updateHardwareScannerStatus();
         updatePrintButton();
