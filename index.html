@@ -743,6 +743,37 @@
             min-height: 20px;
         }
 
+        .hardware-status {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: #fff7ef;
+            border: 1px solid #efd7be;
+            color: #8a4b0f;
+            font-size: 0.94rem;
+        }
+
+        .hardware-status strong {
+            color: #7c2d12;
+        }
+
+        .hardware-status.connected {
+            background: #ecfdf5;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .hardware-status.active {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+        .hardware-status.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #b91c1c;
+        }
+
         .product-item {
             border: 1px solid #efd7be;
             background: #fffdf9;
@@ -900,6 +931,30 @@
 
         .toast.show {
             opacity: 1;
+        }
+
+        .scan-flash {
+            position: fixed;
+            top: 92px;
+            left: 50%;
+            transform: translate(-50%, -16px) scale(0.96);
+            padding: 12px 18px;
+            border-radius: 16px;
+            background: rgba(22, 101, 52, 0.96);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 900;
+            letter-spacing: 0.03em;
+            box-shadow: 0 18px 36px rgba(22, 101, 52, 0.22);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10000;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .scan-flash.show {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
         }
 
         .camera-modal {
@@ -1134,6 +1189,9 @@
                                         <i class="fas fa-plus"></i> Add To Cart
                                     </button>
                                 </div>
+                                <div class="hardware-status active">
+                                    <strong>Scanner:</strong> Eyoyo HID scanner works directly after Windows Bluetooth pairing. No browser scanner connection is needed.
+                                </div>
                                 <div id="posBarcodeMatches" class="search-results">
                                     <div class="empty-state">Matching barcodes will appear here.</div>
                                 </div>
@@ -1194,9 +1252,15 @@
                             <span id="changeAmount">PHP 0.00</span>
                         </div>
                         <div id="paymentNote" class="payment-note">Enter the customer's payment to see the change.</div>
+                        <div id="printerConnectionStatus" class="hardware-status">
+                            <strong>Thermal printer:</strong> No printer connected yet.
+                        </div>
                         <div class="button-row">
                             <button id="checkoutBtn" class="btn-secondary" style="flex: 1;">
                                 <i class="fas fa-check-circle"></i> Complete Sale
+                            </button>
+                            <button id="openPrinterModalBtn" class="btn-ghost">
+                                <i class="fas fa-print"></i> Printer
                             </button>
                             <button id="printReceiptBtn" class="btn-print" disabled>
                                 <i class="fas fa-print"></i> Print Receipt
@@ -1232,6 +1296,9 @@
                                     <button id="catalogManualLookupBtn" class="btn-secondary">
                                         <i class="fas fa-search"></i> Load Product
                                     </button>
+                                </div>
+                                <div class="hardware-status active">
+                                    <strong>Scanner:</strong> Eyoyo HID scanner is ready after Windows Bluetooth pairing and can be used here like the camera scan flow.
                                 </div>
                                 <div id="catalogBarcodeMatches" class="search-results">
                                     <div class="empty-state">Matching barcodes will appear here.</div>
@@ -1407,6 +1474,34 @@
     </div>
 
     <div id="toast" class="toast"></div>
+    <div id="scanFlash" class="scan-flash" aria-live="polite">Scan Success</div>
+    <div id="printerModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 720px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Thermal Printer Connection</div>
+                <button id="closePrinterModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="modal-note">
+                Connect your thermal printer here if you want browser-level printer access. Your Eyoyo scanner does not need this because it already works through Windows Bluetooth pairing.
+            </div>
+            <div id="printerModalStatus" class="hardware-status">
+                <strong>Printer status:</strong> No printer connected yet.
+            </div>
+            <div class="button-row">
+                <button id="searchPrinterDeviceBtn" type="button" class="btn-primary">
+                    <i class="fas fa-magnifying-glass"></i> Search Available Device
+                </button>
+                <button id="disconnectPrinterBtn" type="button" class="btn-ghost">
+                    <i class="fas fa-plug-circle-xmark"></i> Disconnect
+                </button>
+            </div>
+            <div class="catalog-note">
+                <i class="fas fa-circle-info"></i> The browser will try HID, Bluetooth, and Serial printer search. If your printer is already installed in Windows, you can still use the normal browser print receipt flow without browser device connection.
+            </div>
+        </div>
+    </div>
     <div id="scannerModal" class="camera-modal" aria-hidden="true">
         <div class="camera-modal-card">
             <div class="camera-modal-header">
@@ -1417,6 +1512,38 @@
             </div>
             <div id="scannerModalMessage" class="muted">Point the camera at one barcode. The camera closes after one successful scan.</div>
             <div id="scannerModalViewport" class="scanner-stage"></div>
+        </div>
+    </div>
+
+    <div id="hardwareScannerModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 720px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Hardware Barcode Scanner</div>
+                <button id="closeHardwareScannerModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="modal-note">
+                HID Bluetooth barcode scanners like Eyoyo usually do not appear in Chrome device search. Pair them in Windows first, then they work like a keyboard.
+                Only scanners that expose a serial port can be searched and connected directly in Chrome.
+            </div>
+            <div id="hardwareScannerModalStatus" class="hardware-status">
+                <strong>Scanner status:</strong> No hardware scanner connected yet.
+            </div>
+            <div class="button-row">
+                <button id="useKeyboardScannerBtn" type="button" class="btn-secondary">
+                    <i class="fas fa-keyboard"></i> Use HID / Paired Scanner
+                </button>
+                <button id="connectSerialScannerBtn" type="button" class="btn-primary">
+                    <i class="fas fa-magnifying-glass"></i> Search Available Device
+                </button>
+                <button id="disconnectHardwareScannerBtn" type="button" class="btn-ghost">
+                    <i class="fas fa-plug-circle-xmark"></i> Disconnect
+                </button>
+            </div>
+            <div class="catalog-note">
+                <i class="fas fa-circle-info"></i> For Eyoyo HID mode, do not search in Chrome. Pair it in Windows, set an Enter suffix if available, then scan normally on POS or Products.
+            </div>
         </div>
     </div>
 
@@ -1598,6 +1725,7 @@
             beepReady: false,
             audioContext: null,
             catalogImageData: "",
+            barcodeSuggestionCache: {},
             lowStockThreshold: 3,
             pendingRestoreType: "",
             scanner: {
@@ -1607,6 +1735,34 @@
                 instance: null,
                 pauseUntil: 0,
                 processing: false
+            },
+            printer: {
+                hidDevice: null,
+                hidConnected: false,
+                serialPort: null,
+                serialConnected: false,
+                bluetoothDevice: null,
+                bluetoothConnected: false,
+                deviceLabel: "",
+                connectionType: ""
+            },
+            hardwareScanner: {
+                mode: "keyboard",
+                hidDevice: null,
+                hidConnected: false,
+                serialPort: null,
+                serialReader: null,
+                serialConnected: false,
+                bluetoothDevice: null,
+                bluetoothConnected: false,
+                serialBuffer: "",
+                serialFlushTimer: null,
+                keyBuffer: "",
+                keyFlushTimer: null,
+                lastKeyAt: 0,
+                lastScanCode: "",
+                lastScanAt: 0,
+                deviceLabel: ""
             }
         };
 
@@ -1633,6 +1789,20 @@
             showToast.timer = setTimeout(() => {
                 toast.classList.remove("show");
             }, 2400);
+        }
+
+        function showScanFlash(message = "Scan Success") {
+            const flash = document.getElementById("scanFlash");
+            if (!flash) {
+                return;
+            }
+
+            flash.textContent = message;
+            flash.classList.add("show");
+            clearTimeout(showScanFlash.timer);
+            showScanFlash.timer = setTimeout(() => {
+                flash.classList.remove("show");
+            }, 850);
         }
 
         async function prepareScanBeep() {
@@ -2054,9 +2224,943 @@
             showToast("Low stock minimum reset to 3", "success");
         }
 
+        function getPrinterStatusState() {
+            const printer = state.printer;
+
+            if (printer.serialConnected) {
+                const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `Serial printer connected.${deviceText}`,
+                    detail: "Browser printer connection is active for this POS."
+                };
+            }
+
+            if (printer.bluetoothConnected) {
+                const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `Bluetooth printer selected.${deviceText}`,
+                    detail: "Bluetooth printer device access was approved in the browser."
+                };
+            }
+
+            if (printer.hidConnected) {
+                const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `HID printer selected.${deviceText}`,
+                    detail: "HID printer device access was approved in the browser."
+                };
+            }
+
+            return {
+                statusClass: "",
+                summary: "No printer connected yet.",
+                detail: "Search for a thermal printer here, or keep using normal browser receipt printing through Windows."
+            };
+        }
+
+        function updatePrinterStatus() {
+            const uiState = getPrinterStatusState();
+            const targets = [
+                document.getElementById("printerConnectionStatus"),
+                document.getElementById("printerModalStatus")
+            ];
+
+            targets.forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.className = `hardware-status ${uiState.statusClass}`.trim();
+                element.innerHTML = `<strong>Thermal printer:</strong> ${escapeHtml(uiState.summary)}`;
+            });
+
+            const modalStatus = document.getElementById("printerModalStatus");
+            if (modalStatus) {
+                modalStatus.innerHTML = `
+                    <strong>Printer status:</strong> ${escapeHtml(uiState.summary)}
+                    <div style="margin-top: 8px;">${escapeHtml(uiState.detail)}</div>
+                `;
+            }
+
+            const searchButton = document.getElementById("searchPrinterDeviceBtn");
+            const disconnectButton = document.getElementById("disconnectPrinterBtn");
+            if (searchButton) {
+                searchButton.disabled = !("hid" in navigator) && !("bluetooth" in navigator) && !("serial" in navigator);
+            }
+            if (disconnectButton) {
+                disconnectButton.disabled = !state.printer.hidConnected && !state.printer.bluetoothConnected && !state.printer.serialConnected;
+            }
+        }
+
+        function openPrinterModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closeCatalogFormModal();
+            closeSavedProductsModal();
+            updatePrinterStatus();
+            const modal = document.getElementById("printerModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closePrinterModal() {
+            const modal = document.getElementById("printerModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        async function disconnectPrinter(showMessage = true) {
+            const printer = state.printer;
+
+            if (printer.hidDevice?.opened) {
+                try {
+                    await printer.hidDevice.close();
+                } catch (error) {
+                    console.warn("Printer HID close warning:", error);
+                }
+            }
+
+            if (printer.serialPort) {
+                try {
+                    await printer.serialPort.close();
+                } catch (error) {
+                    console.warn("Printer serial close warning:", error);
+                }
+            }
+
+            if (printer.bluetoothDevice?.gatt?.connected) {
+                try {
+                    printer.bluetoothDevice.gatt.disconnect();
+                } catch (error) {
+                    console.warn("Printer Bluetooth disconnect warning:", error);
+                }
+            }
+
+            printer.hidDevice = null;
+            printer.hidConnected = false;
+            printer.serialPort = null;
+            printer.serialConnected = false;
+            printer.bluetoothDevice = null;
+            printer.bluetoothConnected = false;
+            printer.deviceLabel = "";
+            printer.connectionType = "";
+            updatePrinterStatus();
+
+            if (showMessage) {
+                showToast("Printer disconnected", "info");
+            }
+        }
+
+        async function activatePrinterHidDevice(device, options = {}) {
+            const { showToastMessage = true, closeModal = true } = options;
+
+            if (device?.opened === false && typeof device.open === "function") {
+                try {
+                    await device.open();
+                } catch (error) {
+                    console.warn("Printer HID open warning:", error);
+                }
+            }
+
+            state.printer.hidDevice = device;
+            state.printer.hidConnected = true;
+            state.printer.deviceLabel = device?.productName || "HID printer";
+            state.printer.connectionType = "hid";
+            updatePrinterStatus();
+
+            if (closeModal) {
+                closePrinterModal();
+            }
+
+            if (showToastMessage) {
+                showToast("Thermal printer connected by HID", "success");
+            }
+        }
+
+        async function activatePrinterBluetoothDevice(device, options = {}) {
+            const { showToastMessage = true, closeModal = true } = options;
+
+            state.printer.bluetoothDevice = device;
+            state.printer.bluetoothConnected = true;
+            state.printer.deviceLabel = device?.name || "Bluetooth printer";
+            state.printer.connectionType = "bluetooth";
+
+            if (device?.gatt) {
+                try {
+                    await device.gatt.connect();
+                } catch (error) {
+                    console.warn("Printer Bluetooth GATT connect warning:", error);
+                }
+            }
+
+            if (typeof device?.addEventListener === "function") {
+                device.addEventListener("gattserverdisconnected", () => {
+                    if (state.printer.bluetoothDevice === device) {
+                        state.printer.bluetoothDevice = null;
+                        state.printer.bluetoothConnected = false;
+                        state.printer.deviceLabel = "";
+                        state.printer.connectionType = "";
+                        updatePrinterStatus();
+                        showToast("Printer disconnected", "info");
+                    }
+                }, { once: true });
+            }
+
+            updatePrinterStatus();
+
+            if (closeModal) {
+                closePrinterModal();
+            }
+
+            if (showToastMessage) {
+                showToast("Thermal printer selected by Bluetooth", "success");
+            }
+        }
+
+        async function activatePrinterSerialPort(port, options = {}) {
+            const { showToastMessage = true, closeModal = true } = options;
+            const baudRates = [9600, 115200, 19200, 38400, 57600];
+            let lastError = null;
+            let openedBaudRate = null;
+
+            for (const baudRate of baudRates) {
+                try {
+                    await port.open({ baudRate });
+                    openedBaudRate = baudRate;
+                    break;
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            if (!openedBaudRate) {
+                throw lastError || new Error("Could not open printer serial port");
+            }
+
+            const info = typeof port.getInfo === "function" ? port.getInfo() : {};
+            const vendorId = info.usbVendorId ? `VID ${info.usbVendorId}` : "";
+            const productId = info.usbProductId ? `PID ${info.usbProductId}` : "";
+            const deviceLabel = [vendorId, productId].filter(Boolean).join(" ");
+
+            state.printer.serialPort = port;
+            state.printer.serialConnected = true;
+            state.printer.deviceLabel = deviceLabel || `Serial printer ${openedBaudRate}`;
+            state.printer.connectionType = "serial";
+            updatePrinterStatus();
+
+            if (closeModal) {
+                closePrinterModal();
+            }
+
+            if (showToastMessage) {
+                showToast("Thermal printer connected by serial", "success");
+            }
+        }
+
+        async function restoreKnownPrinterDevices() {
+            try {
+                if ("hid" in navigator && typeof navigator.hid.getDevices === "function" && !state.printer.hidConnected) {
+                    const hidDevices = await navigator.hid.getDevices();
+                    if (hidDevices.length) {
+                        await activatePrinterHidDevice(hidDevices[0], { showToastMessage: false, closeModal: false });
+                        return;
+                    }
+                }
+
+                if ("serial" in navigator && typeof navigator.serial.getPorts === "function" && !state.printer.serialConnected) {
+                    const serialPorts = await navigator.serial.getPorts();
+                    if (serialPorts.length) {
+                        await activatePrinterSerialPort(serialPorts[0], { showToastMessage: false, closeModal: false });
+                    }
+                }
+            } catch (error) {
+                console.warn("Restore printer warning:", error);
+            }
+        }
+
+        async function searchAvailablePrinterDevice() {
+            await disconnectPrinter(false);
+
+            try {
+                if ("hid" in navigator && window.isSecureContext) {
+                    const hidDevices = await navigator.hid.requestDevice({ filters: [] });
+                    const [hidDevice] = hidDevices || [];
+                    if (hidDevice) {
+                        await activatePrinterHidDevice(hidDevice);
+                        return;
+                    }
+                }
+
+                if ("bluetooth" in navigator && window.isSecureContext) {
+                    const bluetoothDevice = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+                    if (bluetoothDevice) {
+                        await activatePrinterBluetoothDevice(bluetoothDevice);
+                        return;
+                    }
+                }
+
+                if ("serial" in navigator) {
+                    const port = await navigator.serial.requestPort();
+                    await activatePrinterSerialPort(port);
+                    return;
+                }
+
+                showToast("Browser printer search is not available here", "error");
+            } catch (error) {
+                console.error("Printer device search failed:", error);
+                updatePrinterStatus();
+                if (error?.name === "NotFoundError") {
+                    showToast("No printer device selected", "info");
+                    return;
+                }
+                showToast(`Failed to connect printer: ${error.message}`, "error");
+            }
+        }
+
+        function getHardwareScannerStatusState() {
+            const hw = state.hardwareScanner;
+
+            if (hw.hidConnected) {
+                const deviceText = hw.deviceLabel ? ` ${hw.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `HID scanner selected.${deviceText}`,
+                    detail: "Browser access was approved, but for everyday cashier use the scanner should still stay paired in Windows Bluetooth and scan normally on POS or Products."
+                };
+            }
+
+            if (hw.serialConnected) {
+                const deviceText = hw.deviceLabel ? ` ${hw.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `Serial scanner connected in Chrome.${deviceText}`,
+                    detail: "Scan with the connected hardware scanner. Camera is optional."
+                };
+            }
+
+            if (hw.bluetoothConnected) {
+                const deviceText = hw.deviceLabel ? ` ${hw.deviceLabel}` : "";
+                return {
+                    statusClass: "connected",
+                    summary: `Bluetooth device selected.${deviceText}`,
+                    detail: "If this scanner sends barcode data like a keyboard, you can scan normally on POS or Products."
+                };
+            }
+
+            if (hw.mode === "keyboard") {
+                return {
+                    statusClass: "active",
+                    summary: "HID keyboard scanner mode ready after Windows Bluetooth pairing.",
+                    detail: "This is the normal Eyoyo setup. Pair it in Windows Bluetooth, then scan normally and POS or Products will handle it automatically."
+                };
+            }
+
+            return {
+                statusClass: "",
+                summary: "No hardware scanner connected yet.",
+                detail: "Use keyboard mode after pairing, or connect a scanner that exposes a serial port in Chrome."
+            };
+        }
+
+        function updateHardwareScannerStatus() {
+            const uiState = getHardwareScannerStatusState();
+            const targets = [
+                document.getElementById("hardwareScannerStatus"),
+                document.getElementById("catalogHardwareScannerStatus"),
+                document.getElementById("hardwareScannerModalStatus")
+            ];
+
+            targets.forEach((element) => {
+                if (!element) {
+                    return;
+                }
+
+                element.className = `hardware-status ${uiState.statusClass}`.trim();
+                element.innerHTML = `<strong>Hardware scanner:</strong> ${escapeHtml(uiState.summary)}`;
+            });
+
+            const modalStatus = document.getElementById("hardwareScannerModalStatus");
+            if (modalStatus) {
+                modalStatus.innerHTML = `
+                    <strong>Scanner status:</strong> ${escapeHtml(uiState.summary)}
+                    <div style="margin-top: 8px;">${escapeHtml(uiState.detail)}</div>
+                `;
+            }
+
+            const connectButton = document.getElementById("connectSerialScannerBtn");
+            const disconnectButton = document.getElementById("disconnectHardwareScannerBtn");
+            if (connectButton) {
+                connectButton.disabled = !("hid" in navigator) && !("bluetooth" in navigator) && !("serial" in navigator);
+            }
+            if (disconnectButton) {
+                disconnectButton.disabled = !state.hardwareScanner.hidConnected && !state.hardwareScanner.serialConnected && !state.hardwareScanner.bluetoothConnected;
+            }
+        }
+
+        function openHardwareScannerModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+
+            closeCatalogFormModal();
+            closeSavedProductsModal();
+            const modal = document.getElementById("hardwareScannerModal");
+            updateHardwareScannerStatus();
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeHardwareScannerModal() {
+            const modal = document.getElementById("hardwareScannerModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        async function enableKeyboardScannerMode() {
+            await prepareScanBeep();
+            await disconnectHardwareScanner(false);
+            state.hardwareScanner.mode = "keyboard";
+            state.hardwareScanner.deviceLabel = "Paired keyboard scanner";
+            updateHardwareScannerStatus();
+            closeHardwareScannerModal();
+            showToast("Eyoyo HID scanner ready for POS and Products", "success");
+        }
+
+        function isEditableTarget(target) {
+            if (!target) {
+                return false;
+            }
+
+            const tagName = String(target.tagName || "").toLowerCase();
+            return tagName === "input"
+                || tagName === "textarea"
+                || tagName === "select"
+                || target.isContentEditable;
+        }
+
+        function clearHardwareScannerBuffers() {
+            const hw = state.hardwareScanner;
+            hw.keyBuffer = "";
+            hw.serialBuffer = "";
+
+            if (hw.keyFlushTimer) {
+                clearTimeout(hw.keyFlushTimer);
+                hw.keyFlushTimer = null;
+            }
+
+            if (hw.serialFlushTimer) {
+                clearTimeout(hw.serialFlushTimer);
+                hw.serialFlushTimer = null;
+            }
+        }
+
+        function shouldIgnoreHardwareScan(code) {
+            const hw = state.hardwareScanner;
+            const now = Date.now();
+            const cleanCode = normalizeScannedCode(code);
+
+            if (!cleanCode) {
+                return true;
+            }
+
+            if (hw.lastScanCode === cleanCode && (now - hw.lastScanAt) < 1200) {
+                return true;
+            }
+
+            hw.lastScanCode = cleanCode;
+            hw.lastScanAt = now;
+            return false;
+        }
+
+        async function routeHardwareScannerCode(code) {
+            const cleanCode = normalizeScannedCode(code);
+            if (shouldIgnoreHardwareScan(cleanCode)) {
+                return;
+            }
+
+            await prepareScanBeep();
+            playScanBeep();
+            showScanFlash("Scan Success");
+
+            if (state.currentPage === "catalogPage") {
+                await handleCatalogLookup(cleanCode);
+                return;
+            }
+
+            if (state.currentPage === "posPage") {
+                await handlePosLookup(cleanCode, true);
+            }
+        }
+
+        async function flushKeyboardScannerBuffer() {
+            const hw = state.hardwareScanner;
+            const bufferedCode = normalizeScannedCode(hw.keyBuffer);
+            hw.keyBuffer = "";
+
+            if (hw.keyFlushTimer) {
+                clearTimeout(hw.keyFlushTimer);
+                hw.keyFlushTimer = null;
+            }
+
+            if (bufferedCode.length < 3) {
+                return;
+            }
+
+            await routeHardwareScannerCode(bufferedCode);
+        }
+
+        function queueSerialScannerFlush() {
+            const hw = state.hardwareScanner;
+            if (hw.serialFlushTimer) {
+                clearTimeout(hw.serialFlushTimer);
+            }
+
+            hw.serialFlushTimer = window.setTimeout(async () => {
+                const bufferedCode = normalizeScannedCode(hw.serialBuffer);
+                hw.serialBuffer = "";
+                hw.serialFlushTimer = null;
+
+                if (bufferedCode.length >= 3) {
+                    await routeHardwareScannerCode(bufferedCode);
+                }
+            }, 120);
+        }
+
+        async function processSerialScannerChunk(chunk) {
+            if (!chunk) {
+                return;
+            }
+
+            const hw = state.hardwareScanner;
+            for (const character of chunk) {
+                if (character === "\r" || character === "\n" || character === "\t") {
+                    const bufferedCode = normalizeScannedCode(hw.serialBuffer);
+                    hw.serialBuffer = "";
+                    if (hw.serialFlushTimer) {
+                        clearTimeout(hw.serialFlushTimer);
+                        hw.serialFlushTimer = null;
+                    }
+
+                    if (bufferedCode.length >= 3) {
+                        await routeHardwareScannerCode(bufferedCode);
+                    }
+                    continue;
+                }
+
+                hw.serialBuffer += character;
+                if (hw.serialBuffer.length > 120) {
+                    hw.serialBuffer = hw.serialBuffer.slice(-120);
+                }
+                queueSerialScannerFlush();
+            }
+        }
+
+        async function disconnectHardwareScanner(showMessage = true) {
+            const hw = state.hardwareScanner;
+            clearHardwareScannerBuffers();
+
+            if (hw.hidDevice?.opened) {
+                try {
+                    await hw.hidDevice.close();
+                } catch (error) {
+                    console.warn("HID device close warning:", error);
+                }
+            }
+
+            hw.hidDevice = null;
+            hw.hidConnected = false;
+
+            if (hw.serialReader) {
+                try {
+                    await hw.serialReader.cancel();
+                } catch (error) {
+                    console.warn("Serial reader cancel warning:", error);
+                }
+
+                try {
+                    hw.serialReader.releaseLock();
+                } catch (error) {
+                    console.warn("Serial reader release warning:", error);
+                }
+
+                hw.serialReader = null;
+            }
+
+            if (hw.serialPort) {
+                try {
+                    await hw.serialPort.close();
+                } catch (error) {
+                    console.warn("Serial port close warning:", error);
+                }
+            }
+
+            hw.serialPort = null;
+            hw.serialConnected = false;
+            if (hw.bluetoothDevice?.gatt?.connected) {
+                try {
+                    hw.bluetoothDevice.gatt.disconnect();
+                } catch (error) {
+                    console.warn("Bluetooth device disconnect warning:", error);
+                }
+            }
+            hw.bluetoothDevice = null;
+            hw.bluetoothConnected = false;
+            hw.deviceLabel = "";
+            hw.mode = "keyboard";
+            updateHardwareScannerStatus();
+
+            if (showMessage) {
+                showToast("Serial scanner disconnected. Keyboard scanner mode stays ready.", "info");
+            }
+        }
+
+        async function activateHidScannerDevice(device, options = {}) {
+            const { showToastMessage = true, closeModal = true } = options;
+
+            if (device?.opened === false && typeof device.open === "function") {
+                try {
+                    await device.open();
+                } catch (error) {
+                    console.warn("HID device open warning:", error);
+                }
+            }
+
+            state.hardwareScanner.hidDevice = device;
+            state.hardwareScanner.hidConnected = true;
+            state.hardwareScanner.mode = "keyboard";
+            state.hardwareScanner.deviceLabel = device?.productName || "HID scanner";
+            updateHardwareScannerStatus();
+
+            if (closeModal) {
+                closeHardwareScannerModal();
+            }
+
+            if (showToastMessage) {
+                showToast("HID scanner selected and ready", "success");
+            }
+        }
+
+        async function restoreKnownHidScanner() {
+            if (!("hid" in navigator) || typeof navigator.hid.getDevices !== "function") {
+                return;
+            }
+
+            if (state.hardwareScanner.hidConnected) {
+                return;
+            }
+
+            try {
+                const devices = await navigator.hid.getDevices();
+                if (!devices.length) {
+                    return;
+                }
+
+                await activateHidScannerDevice(devices[0], { showToastMessage: false, closeModal: false });
+            } catch (error) {
+                console.warn("Auto restore HID scanner warning:", error);
+            }
+        }
+
+        async function searchAvailableHidDevice() {
+            if (!("hid" in navigator) || !window.isSecureContext) {
+                return false;
+            }
+
+            try {
+                const devices = await navigator.hid.requestDevice({ filters: [] });
+                const [device] = devices || [];
+
+                if (!device) {
+                    return false;
+                }
+
+                await activateHidScannerDevice(device, { showToastMessage: true, closeModal: true });
+                return true;
+            } catch (error) {
+                if (error?.name === "NotFoundError") {
+                    return false;
+                }
+
+                console.error("HID device search failed:", error);
+                showToast(`HID search failed: ${error.message}`, "error");
+                return true;
+            }
+        }
+
+        async function openSerialPortWithCommonSettings(port) {
+            const baudRates = [9600, 115200, 19200, 38400, 57600];
+            let lastError = null;
+
+            for (const baudRate of baudRates) {
+                try {
+                    await port.open({ baudRate });
+                    return baudRate;
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error("Could not open scanner serial port");
+        }
+
+        async function activateSerialScannerPort(port, options = {}) {
+            const { showToastMessage = true, closeModal = true } = options;
+
+            const baudRate = await openSerialPortWithCommonSettings(port);
+            const info = typeof port.getInfo === "function" ? port.getInfo() : {};
+            const vendorId = info.usbVendorId ? `VID ${info.usbVendorId}` : "";
+            const productId = info.usbProductId ? `PID ${info.usbProductId}` : "";
+            const deviceLabel = [vendorId, productId].filter(Boolean).join(" ");
+
+            state.hardwareScanner.serialPort = port;
+            state.hardwareScanner.serialConnected = true;
+            state.hardwareScanner.mode = "serial";
+            state.hardwareScanner.deviceLabel = deviceLabel || `Serial scanner ${baudRate}`;
+            updateHardwareScannerStatus();
+
+            if (closeModal) {
+                closeHardwareScannerModal();
+            }
+
+            if (showToastMessage) {
+                showToast("Hardware scanner connected and ready", "success");
+            }
+
+            readSerialScannerLoop(port).catch((error) => {
+                console.error("Serial scanner read failed:", error);
+                disconnectHardwareScanner(false).finally(() => {
+                    showToast(`Hardware scanner error: ${error.message}`, "error");
+                });
+            });
+        }
+
+        async function searchAvailableBluetoothDevice() {
+            if (!("bluetooth" in navigator) || !window.isSecureContext) {
+                return false;
+            }
+
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true
+                });
+
+                if (!device) {
+                    return false;
+                }
+
+                state.hardwareScanner.bluetoothDevice = device;
+                state.hardwareScanner.bluetoothConnected = true;
+                state.hardwareScanner.deviceLabel = device.name || "Bluetooth scanner";
+                state.hardwareScanner.mode = "keyboard";
+
+                if (device.gatt) {
+                    try {
+                        await device.gatt.connect();
+                    } catch (error) {
+                        console.warn("Bluetooth GATT connect warning:", error);
+                    }
+                }
+
+                if (typeof device.addEventListener === "function") {
+                    device.addEventListener("gattserverdisconnected", () => {
+                        if (state.hardwareScanner.bluetoothDevice === device) {
+                            state.hardwareScanner.bluetoothConnected = false;
+                            state.hardwareScanner.bluetoothDevice = null;
+                            state.hardwareScanner.deviceLabel = "";
+                            state.hardwareScanner.mode = "keyboard";
+                            updateHardwareScannerStatus();
+                            showToast("Bluetooth scanner disconnected", "info");
+                        }
+                    }, { once: true });
+                }
+
+                updateHardwareScannerStatus();
+                closeHardwareScannerModal();
+                showToast("Bluetooth device selected. If it sends keyboard barcode input, you can scan now.", "success");
+                return true;
+            } catch (error) {
+                if (error?.name === "NotFoundError") {
+                    return false;
+                }
+
+                console.error("Bluetooth device search failed:", error);
+                showToast(`Bluetooth search failed: ${error.message}`, "error");
+                return true;
+            }
+        }
+
+        async function restoreKnownSerialScanner() {
+            if (!("serial" in navigator) || typeof navigator.serial.getPorts !== "function") {
+                return;
+            }
+
+            if (state.hardwareScanner.serialConnected) {
+                return;
+            }
+
+            try {
+                const ports = await navigator.serial.getPorts();
+                if (!ports.length) {
+                    return;
+                }
+
+                await disconnectHardwareScanner(false);
+                await activateSerialScannerPort(ports[0], { showToastMessage: false, closeModal: false });
+            } catch (error) {
+                console.warn("Auto reconnect scanner warning:", error);
+                await disconnectHardwareScanner(false);
+            }
+        }
+
+        async function readSerialScannerLoop(port) {
+            const hw = state.hardwareScanner;
+            const decoder = new TextDecoder();
+
+            while (hw.serialConnected && port.readable) {
+                const reader = port.readable.getReader();
+                hw.serialReader = reader;
+
+                try {
+                    while (hw.serialConnected) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+
+                        if (value) {
+                            const decodedChunk = decoder.decode(value, { stream: true });
+                            await processSerialScannerChunk(decodedChunk);
+                        }
+                    }
+                } catch (error) {
+                    if (!hw.serialConnected || error?.name === "AbortError") {
+                        break;
+                    }
+                    throw error;
+                } finally {
+                    try {
+                        reader.releaseLock();
+                    } catch (error) {
+                        console.warn("Serial reader release warning:", error);
+                    }
+
+                    if (hw.serialReader === reader) {
+                        hw.serialReader = null;
+                    }
+                }
+
+                break;
+            }
+
+            if (hw.serialConnected) {
+                await disconnectHardwareScanner(false);
+                showToast("Hardware scanner disconnected", "info");
+            }
+        }
+
+        async function connectSerialScanner() {
+            await prepareScanBeep();
+
+            try {
+                await disconnectHardwareScanner(false);
+
+                const hidSelected = await searchAvailableHidDevice();
+                if (hidSelected) {
+                    return;
+                }
+
+                const bluetoothSelected = await searchAvailableBluetoothDevice();
+                if (bluetoothSelected) {
+                    return;
+                }
+
+                if (!("serial" in navigator)) {
+                    showToast("No browser device search is available here. Pair Bluetooth scanner in Windows and use it directly.", "error");
+                    return;
+                }
+
+                const port = await navigator.serial.requestPort();
+                await activateSerialScannerPort(port, { showToastMessage: true, closeModal: true });
+            } catch (error) {
+                console.error("Serial scanner connection failed:", error);
+                updateHardwareScannerStatus();
+                if (error?.name === "NotFoundError") {
+                    showToast("No device selected. Eyoyo HID scanners usually need Windows pairing first.", "info");
+                    return;
+                }
+
+                showToast(`Failed to search device: ${error.message}`, "error");
+            }
+        }
+
+        async function handleHardwareKeyboardEvent(event) {
+            if (!["posPage", "catalogPage"].includes(state.currentPage)) {
+                return;
+            }
+
+            if (state.hardwareScanner.mode !== "keyboard") {
+                return;
+            }
+
+            if (isEditableTarget(event.target)) {
+                return;
+            }
+
+            if (event.ctrlKey || event.altKey || event.metaKey) {
+                return;
+            }
+
+            const hw = state.hardwareScanner;
+            const now = Date.now();
+
+            if ((now - hw.lastKeyAt) > 140) {
+                hw.keyBuffer = "";
+            }
+            hw.lastKeyAt = now;
+
+            if (event.key === "Enter" || event.key === "Tab") {
+                if (hw.keyBuffer.length >= 3) {
+                    event.preventDefault();
+                    await flushKeyboardScannerBuffer();
+                }
+                return;
+            }
+
+            if (event.key.length !== 1) {
+                return;
+            }
+
+            hw.keyBuffer += event.key;
+            if (hw.keyBuffer.length > 120) {
+                hw.keyBuffer = hw.keyBuffer.slice(-120);
+            }
+
+            if (hw.keyFlushTimer) {
+                clearTimeout(hw.keyFlushTimer);
+            }
+
+            hw.keyFlushTimer = window.setTimeout(async () => {
+                if (state.hardwareScanner.keyBuffer.length >= 6) {
+                    await flushKeyboardScannerBuffer();
+                } else {
+                    state.hardwareScanner.keyBuffer = "";
+                }
+            }, 150);
+        }
+
         function switchPage(pageId) {
             state.currentPage = pageId;
             stopScanner(false);
+            closePrinterModal();
+            closeHardwareScannerModal();
 
             document.querySelectorAll(".page-panel").forEach((panel) => {
                 panel.classList.toggle("active", panel.id === pageId);
@@ -2102,6 +3206,76 @@
                 notes: data.notes || "",
                 imageData: data.imageData || ""
             };
+        }
+
+        function titleCaseWords(value = "") {
+            return String(value)
+                .split(" ")
+                .filter(Boolean)
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+        }
+
+        function normalizeSuggestedCategory(product = {}) {
+            const taggedCategory = Array.isArray(product.categories_tags_en) ? product.categories_tags_en[0] : "";
+            if (taggedCategory) {
+                return titleCaseWords(String(taggedCategory).replace(/-/g, " "));
+            }
+
+            const categoryText = String(product.categories || "").split(",")[0].trim();
+            return categoryText || "";
+        }
+
+        async function fetchBarcodeSuggestion(scanCode) {
+            const cleanCode = normalizeScannedCode(scanCode);
+            if (!cleanCode) {
+                return null;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(state.barcodeSuggestionCache, cleanCode)) {
+                return state.barcodeSuggestionCache[cleanCode];
+            }
+
+            const requestUrl = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(cleanCode)}?fields=product_name,brands,categories,categories_tags_en,image_url`;
+
+            try {
+                const response = await fetch(requestUrl, {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Lookup service returned ${response.status}`);
+                }
+
+                const payload = await response.json();
+                const remoteProduct = payload?.product;
+                const suggestedName = String(remoteProduct?.product_name || "").trim();
+
+                if (payload?.status !== 1 || !suggestedName) {
+                    state.barcodeSuggestionCache[cleanCode] = null;
+                    return null;
+                }
+
+                const suggestion = {
+                    scanCode: cleanCode,
+                    name: suggestedName,
+                    category: normalizeSuggestedCategory(remoteProduct),
+                    price: "",
+                    stock: "",
+                    unit: "",
+                    notes: "",
+                    imageData: remoteProduct?.image_url || ""
+                };
+
+                state.barcodeSuggestionCache[cleanCode] = suggestion;
+                return suggestion;
+            } catch (error) {
+                console.warn("Barcode suggestion lookup failed:", error);
+                return null;
+            }
         }
 
         function setCatalogImagePreview(imageData = "") {
@@ -2939,7 +4113,8 @@
                     return;
                 }
 
-                fillCatalogForm({
+                const suggestion = await fetchBarcodeSuggestion(cleanCode);
+                const suggestedProduct = suggestion || {
                     scanCode: cleanCode,
                     name: "",
                     category: "",
@@ -2948,7 +4123,24 @@
                     unit: "",
                     notes: "",
                     imageData: ""
-                });
+                };
+
+                fillCatalogForm(suggestedProduct);
+
+                if (suggestion) {
+                    renderCatalogPreview({
+                        ...suggestedProduct,
+                        stock: 0,
+                        price: 0
+                    }, cleanCode);
+                    document.getElementById("catalogLookupNote").textContent =
+                        `Product suggestion found for barcode ${cleanCode}. Review the suggested name, enter the selling price and total quantity, then save it.`;
+                    openCatalogFormModal();
+                    document.getElementById("catalogPrice").focus();
+                    showToast("Product suggestion loaded", "success");
+                    return;
+                }
+
                 renderCatalogPreview(null, cleanCode);
                 document.getElementById("catalogLookupNote").textContent =
                     `No saved product for barcode ${cleanCode}. Enter the product name, total quantity, and selling price, then save it.`;
@@ -3276,6 +4468,8 @@
             if (state.scanner.active) {
                 stopScanner(false);
             }
+            closePrinterModal();
+            closeHardwareScannerModal();
             const modal = document.getElementById("catalogFormModal");
             modal.classList.add("active");
             modal.setAttribute("aria-hidden", "false");
@@ -3311,6 +4505,8 @@
             if (state.scanner.active) {
                 stopScanner(false);
             }
+            closePrinterModal();
+            closeHardwareScannerModal();
             closeCatalogFormModal();
             const modal = document.getElementById("ownerPasswordModal");
             document.getElementById("ownerPasswordInput").value = "";
@@ -3332,6 +4528,8 @@
         }
 
         function openLowStockModal() {
+            closePrinterModal();
+            closeHardwareScannerModal();
             const modal = document.getElementById("lowStockModal");
             renderLowStockList();
             modal.classList.add("active");
@@ -3350,6 +4548,8 @@
             if (state.scanner.active) {
                 stopScanner(false);
             }
+            closePrinterModal();
+            closeHardwareScannerModal();
             closeCatalogFormModal();
             const modal = document.getElementById("savedProductsModal");
             modal.classList.add("active");
@@ -3458,6 +4658,7 @@
             state.scanner.processing = true;
             state.scanner.pauseUntil = now + 1500;
             playScanBeep();
+            showScanFlash("Scan Success");
             stopScanner(false);
 
             if (mode === "pos") {
@@ -3540,6 +4741,10 @@
         document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
         document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
         document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
+        document.getElementById("openPrinterModalBtn").addEventListener("click", openPrinterModal);
+        document.getElementById("closePrinterModalBtn").addEventListener("click", closePrinterModal);
+        document.getElementById("searchPrinterDeviceBtn").addEventListener("click", searchAvailablePrinterDevice);
+        document.getElementById("disconnectPrinterBtn").addEventListener("click", () => disconnectPrinter());
         document.getElementById("saveLowStockThresholdBtn").addEventListener("click", saveLowStockThreshold);
         document.getElementById("backupProductsBtn").addEventListener("click", backupProducts);
         document.getElementById("backupSalesBtn").addEventListener("click", backupSales);
@@ -3576,6 +4781,11 @@
         document.getElementById("scannerModal").addEventListener("click", (event) => {
             if (event.target.id === "scannerModal") {
                 stopScanner();
+            }
+        });
+        document.getElementById("printerModal").addEventListener("click", (event) => {
+            if (event.target.id === "printerModal") {
+                closePrinterModal();
             }
         });
         document.getElementById("openCatalogFormBtn").addEventListener("click", openCatalogFormModal);
@@ -3677,7 +4887,17 @@
             document.getElementById(fieldId).addEventListener("input", syncCatalogPreviewFromForm);
         });
         document.addEventListener("keydown", (event) => {
+            handleHardwareKeyboardEvent(event).catch((error) => {
+                console.error("Hardware scanner keyboard handling failed:", error);
+            });
+        });
+        document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") {
+                return;
+            }
+
+            if (document.getElementById("printerModal").classList.contains("active")) {
+                closePrinterModal();
                 return;
             }
 
@@ -3706,6 +4926,42 @@
             }
         });
 
+        if ("serial" in navigator && typeof navigator.serial.addEventListener === "function") {
+            navigator.serial.addEventListener("disconnect", () => {
+                if (state.hardwareScanner.serialConnected) {
+                    disconnectHardwareScanner(false).finally(() => {
+                        showToast("Hardware scanner disconnected", "info");
+                    });
+                }
+                if (state.printer.serialConnected) {
+                    disconnectPrinter(false).finally(() => {
+                        showToast("Printer disconnected", "info");
+                    });
+                }
+            });
+        }
+
+        if ("hid" in navigator && typeof navigator.hid.addEventListener === "function") {
+            navigator.hid.addEventListener("disconnect", () => {
+                if (state.hardwareScanner.hidConnected) {
+                    state.hardwareScanner.hidConnected = false;
+                    state.hardwareScanner.hidDevice = null;
+                    state.hardwareScanner.deviceLabel = "";
+                    state.hardwareScanner.mode = "keyboard";
+                    updateHardwareScannerStatus();
+                    showToast("HID scanner disconnected", "info");
+                }
+                if (state.printer.hidConnected) {
+                    state.printer.hidConnected = false;
+                    state.printer.hidDevice = null;
+                    state.printer.deviceLabel = "";
+                    state.printer.connectionType = "";
+                    updatePrinterStatus();
+                    showToast("Printer disconnected", "info");
+                }
+            });
+        }
+
         renderCart();
         resetCatalogForm();
         renderPosLookup(null, "");
@@ -3713,7 +4969,12 @@
         renderOwnerReports();
         switchSettingsTab(state.settingsTab);
         syncLowStockThresholdInput();
+        updatePrinterStatus();
+        updateHardwareScannerStatus();
         updatePrintButton();
+        restoreKnownPrinterDevices();
+        restoreKnownHidScanner();
+        restoreKnownSerialScanner();
         fetchProducts();
         fetchSales({ silent: true });
     </script>
