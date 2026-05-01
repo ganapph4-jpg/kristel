@@ -199,7 +199,7 @@
         }
 
         .sale-total-amount {
-            color: var(--danger);
+            color: var(--accent);
             font-size: 2.8rem;
             font-weight: 950;
             line-height: 1.05;
@@ -222,6 +222,24 @@
 
         .page-grid.catalog {
             grid-template-columns: 1fr;
+        }
+
+        .owner-product-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .product-action-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .compact-results {
+            max-height: 220px;
+            overflow-y: auto;
         }
 
         .page-grid.settings {
@@ -506,13 +524,19 @@
 
         .cart-header .icon-btn {
             background: rgba(255, 255, 255, 0.95);
-            color: var(--brand);
+            color: var(--danger);
             flex-shrink: 0;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16);
         }
 
         .cart-header .icon-btn.connected {
-            color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(20, 108, 67, 0.18);
+            color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .cart-header .icon-btn.error {
+            color: var(--danger);
+            box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.24);
         }
 
         .cart-items {
@@ -849,6 +873,16 @@
             gap: 10px;
         }
 
+        .report-item.low {
+            border-color: #facc15;
+            background: #fffbeb;
+        }
+
+        .report-item.out {
+            border-color: #fca5a5;
+            background: #fef2f2;
+        }
+
         .report-item-top {
             display: flex;
             justify-content: space-between;
@@ -860,6 +894,10 @@
         .report-title {
             font-size: 1.02rem;
             font-weight: 800;
+        }
+
+        .product-name-color {
+            font-weight: 900;
         }
 
         .report-meta {
@@ -967,10 +1005,20 @@
         .product-item {
             border: 1px solid #efd7be;
             background: #fffdf9;
-            border-radius: 20px;
-            padding: 16px;
+            border-radius: 16px;
+            padding: 12px;
             display: grid;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        .product-item.low {
+            border-color: #facc15;
+            background: #fffbeb;
+        }
+
+        .product-item.out {
+            border-color: #fca5a5;
+            background: #fef2f2;
         }
 
         .product-item-top {
@@ -981,7 +1029,27 @@
         }
 
         .product-item h4 {
-            font-size: 1.02rem;
+            font-size: 0.98rem;
+        }
+
+        .product-stock-pill {
+            border-radius: 999px;
+            padding: 7px 10px;
+            font-weight: 900;
+            font-size: 0.82rem;
+            background: #dcfce7;
+            color: #166534;
+            white-space: nowrap;
+        }
+
+        .product-stock-pill.low {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .product-stock-pill.out {
+            background: #fee2e2;
+            color: #991b1b;
         }
 
         .price-pill {
@@ -997,6 +1065,12 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
+        }
+
+        .stock-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .tag {
@@ -1195,6 +1269,20 @@
             line-height: 1.6;
         }
 
+        .sale-complete-total {
+            color: var(--accent);
+            font-size: 2.5rem;
+            font-weight: 950;
+            line-height: 1.05;
+        }
+
+        .sale-complete-change {
+            color: var(--danger);
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
         .form-modal .camera-modal-card {
             width: min(100%, 860px);
             max-height: calc(100vh - 36px);
@@ -1202,6 +1290,7 @@
         }
 
         @media (max-width: 1080px) {
+            .owner-product-panel,
             .page-grid.pos,
             .page-grid.catalog,
             .page-grid.settings {
@@ -1427,64 +1516,71 @@
         </section>
 
         <section id="catalogPage" class="page-panel">
-            <div class="page-grid catalog">
-                <div class="left-stack">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-camera-retro"></i> Scan Or Enter Product Barcode</h2>
-                            <div class="inline-actions">
-                                <button id="toggleCatalogScannerBtn" class="btn-primary">
-                                    <i class="fas fa-camera"></i> Open Camera
+            <div class="owner-product-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-boxes-stacked"></i> Products</h2>
+                        <button id="toggleCatalogScannerBtn" class="icon-btn" title="Camera Scan" aria-label="Camera Scan">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="scanner-shell">
+                            <div class="manual-input">
+                                <input id="catalogManualBarcode" type="text" placeholder="Scan or enter barcode">
+                                <button id="catalogManualLookupBtn" class="btn-secondary">
+                                    <i class="fas fa-search"></i> Load
                                 </button>
                             </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="scanner-shell">
-                                <div class="catalog-note">
-                                    <i class="fas fa-camera"></i> Scan with camera or enter the barcode manually.
-                                </div>
-                                <div class="manual-input">
-                                    <input id="catalogManualBarcode" type="text" placeholder="Enter barcode for product setup">
-                                    <button id="catalogManualLookupBtn" class="btn-secondary">
-                                        <i class="fas fa-search"></i> Load Product
-                                    </button>
-                                </div>
-                                <div class="hardware-status active">
-                                    <strong>Scanner:</strong> Eyoyo HID scanner is ready after Windows Bluetooth pairing and can be used here like the camera scan flow.
-                                </div>
-                                <div id="catalogBarcodeMatches" class="search-results">
-                                    <div class="empty-state">Matching barcodes will appear here.</div>
-                                </div>
-                                <div id="catalogLookupNote" class="catalog-note">
-                                    Scan or enter a barcode to load or create a product.
-                                </div>
+                            <div id="catalogBarcodeMatches" class="search-results compact-results">
+                                <div class="empty-state">Matching barcodes will appear here.</div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-box"></i> Scanned Product Details</h3>
-                        </div>
-                        <div class="card-body">
-                            <div id="catalogPreviewResult" class="lookup-result empty">
-                                Scan a barcode to show the product name, total quantity, and selling price here.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-pen-to-square"></i> Product Setup Form</h3>
-                            <div class="inline-actions">
-                                <button id="openSavedProductsBtn" class="btn-ghost">
-                                    <i class="fas fa-database"></i> Saved Products
-                                </button>
+                            <div class="product-action-grid">
                                 <button id="openCatalogFormBtn" class="btn-secondary">
-                                    <i class="fas fa-pen-to-square"></i> Open Form
+                                    <i class="fas fa-plus"></i> Add Product
+                                </button>
+                                <button id="openSavedProductsBtn" class="btn-ghost">
+                                    <i class="fas fa-database"></i> Manage Products
+                                </button>
+                                <button id="openProductLowStocksBtn" class="btn-danger">
+                                    <i class="fas fa-triangle-exclamation"></i> Low Stocks
                                 </button>
                             </div>
+                            <div id="catalogLookupNote" class="catalog-note">
+                                Load a barcode, add a product, or manage saved products.
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <p class="modal-note">Scan or load a barcode, then the product setup form opens in a popup so you can type product name, total quantity, and selling price without scrolling.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-box"></i> Selected Product</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="catalogPreviewResult" class="lookup-result empty">
+                            Product details will appear here after loading a barcode.
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-triangle-exclamation"></i> Low Stock Products</h3>
+                        <div class="inline-actions">
+                            <div id="productLowStockCountBadge" class="low-stock-count">0</div>
+                            <button id="productOpenLowStockModalBtn" class="btn-danger">
+                                <i class="fas fa-list"></i> Show All Low Stocks
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="manual-input" style="margin-bottom: 14px;">
+                            <input id="productLowStockThresholdInput" type="number" min="0" step="1" placeholder="Low stock minimum">
+                            <button id="productSaveLowStockThresholdBtn" class="btn-ghost">
+                                <i class="fas fa-pen"></i> Update
+                            </button>
+                        </div>
+                        <div id="productLowStockSummary" class="lookup-result empty">
+                            Low stock summary will appear here after loading products.
                         </div>
                     </div>
                 </div>
@@ -1617,6 +1713,18 @@
                             </button>
                             <button id="resetLowStockThresholdBtn" class="btn-danger">
                                 <i class="fas fa-gauge-simple"></i> Reset Low Stock
+                            </button>
+                        </div>
+                    </div>
+                    <div class="tool-card">
+                        <div>
+                            <h3><i class="fas fa-lock"></i> Products Password</h3>
+                            <p class="muted">Set the password required before opening the Products page.</p>
+                        </div>
+                        <div class="manual-input">
+                            <input id="productPagePasswordSettingInput" type="password" placeholder="New Products password">
+                            <button id="saveProductPagePasswordBtn" class="btn-secondary">
+                                <i class="fas fa-floppy-disk"></i> Save
                             </button>
                         </div>
                     </div>
@@ -1753,7 +1861,13 @@
                     <input id="catalogName" type="text" placeholder="Product name will show here or you can type it">
                 </div>
                 <div class="field">
-                    <label for="catalogCategory">Category</label>
+                    <label for="catalogCategorySelect">Choose Category (Optional)</label>
+                    <select id="catalogCategorySelect">
+                        <option value="">Manual / New category</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="catalogCategory">Or Type New Category</label>
                     <input id="catalogCategory" type="text" placeholder="Example: Noodles">
                 </div>
                 <div class="field">
@@ -1808,6 +1922,47 @@
         </div>
     </div>
 
+    <div id="productPasswordModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 480px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Products Page Access</div>
+                <button id="closeProductPasswordModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="muted">Enter the Products password to add or edit products.</div>
+            <div class="field">
+                <label for="productPasswordInput">Password</label>
+                <input id="productPasswordInput" type="password" placeholder="Enter Products password">
+            </div>
+            <div id="productPasswordError" class="owner-password-error"></div>
+            <div class="button-row">
+                <button id="submitProductPasswordBtn" class="btn-secondary">
+                    <i class="fas fa-unlock"></i> Open Products
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="saleCompleteModal" class="camera-modal" aria-hidden="true">
+        <div class="camera-modal-card" style="width: min(100%, 480px);">
+            <div class="camera-modal-header">
+                <div class="camera-modal-title">Sale Complete</div>
+                <button id="closeSaleCompleteModalBtn" class="btn-danger btn-small">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="lookup-result">
+                <div class="muted">Total Amount</div>
+                <div id="saleCompleteTotal" class="sale-complete-total">PHP 0.00</div>
+            </div>
+            <div class="lookup-result">
+                <div class="muted">Change</div>
+                <div id="saleCompleteChange" class="sale-complete-change">PHP 0.00</div>
+            </div>
+        </div>
+    </div>
+
     <div id="lowStockModal" class="camera-modal" aria-hidden="true">
         <div class="camera-modal-card" style="width: min(100%, 900px);">
             <div class="camera-modal-header">
@@ -1839,8 +1994,14 @@
                 <button id="refreshProductsBtn" class="btn-ghost">
                     <i class="fas fa-arrows-rotate"></i> Refresh
                 </button>
+                <button id="filterLowStockProductsBtn" class="btn-danger">
+                    <i class="fas fa-triangle-exclamation"></i> Low Stocks
+                </button>
             </div>
             <input id="catalogSearchInput" type="text" placeholder="Search saved products by name">
+            <select id="catalogCategoryFilter">
+                <option value="">All categories</option>
+            </select>
             <div id="catalogProductList" class="product-list">
                 <div class="empty-state">
                     Products will appear here after loading from Firestore.
@@ -1883,6 +2044,7 @@
             lastSale: null,
             currentPage: "posPage",
             ownerUnlocked: false,
+            productsUnlocked: false,
             settingsTab: "reports",
             beepReady: false,
             audioContext: null,
@@ -1890,7 +2052,9 @@
             barcodeSuggestionCache: {},
             lowStockThreshold: 3,
             pendingRestoreType: "",
+            catalogLowStockOnly: false,
             autoReceiptEnabled: localStorage.getItem("kristelAutoReceipt") === "true",
+            productPagePassword: localStorage.getItem("kristelProductPagePassword") || "1234",
             scanner: {
                 active: false,
                 mode: null,
@@ -1909,7 +2073,8 @@
                 bluetoothCharacteristic: null,
                 bluetoothConnected: false,
                 deviceLabel: "",
-                connectionType: ""
+                connectionType: "",
+                errorMessage: ""
             },
             hardwareScanner: {
                 mode: "keyboard",
@@ -2146,15 +2311,40 @@
             return "";
         }
 
-        function syncLowStockThresholdInput() {
-            const input = document.getElementById("lowStockThresholdInput");
-            if (input) {
-                input.value = String(state.lowStockThreshold);
+        function getProductNameColor(product = {}) {
+            const palette = [
+                "#b91c1c",
+                "#c2410c",
+                "#a16207",
+                "#15803d",
+                "#0f766e",
+                "#0369a1",
+                "#1d4ed8",
+                "#7c3aed",
+                "#be185d",
+                "#9333ea"
+            ];
+            const seed = String(product.name || product.scanCode || "product");
+            let hash = 0;
+
+            for (const character of seed) {
+                hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
             }
+
+            return palette[hash % palette.length];
         }
 
-        function saveLowStockThreshold() {
-            const input = document.getElementById("lowStockThresholdInput");
+        function syncLowStockThresholdInput() {
+            [
+                document.getElementById("lowStockThresholdInput"),
+                document.getElementById("productLowStockThresholdInput")
+            ].filter(Boolean).forEach((input) => {
+                input.value = String(state.lowStockThreshold);
+            });
+        }
+
+        function saveLowStockThreshold(inputId = "lowStockThresholdInput") {
+            const input = document.getElementById(inputId) || document.getElementById("lowStockThresholdInput");
             const nextValue = Number(input.value);
 
             if (!Number.isFinite(nextValue) || nextValue < 0) {
@@ -2415,6 +2605,14 @@
         function getPrinterStatusState() {
             const printer = state.printer;
 
+            if (printer.errorMessage) {
+                return {
+                    statusClass: "error",
+                    summary: "Printer error.",
+                    detail: printer.errorMessage
+                };
+            }
+
             if (printer.serialConnected) {
                 const deviceText = printer.deviceLabel ? ` ${printer.deviceLabel}` : "";
                 return {
@@ -2488,7 +2686,11 @@
             }
             if (headerPrinterButton) {
                 headerPrinterButton.classList.toggle("connected", printerConnected);
+                headerPrinterButton.classList.toggle("error", Boolean(state.printer.errorMessage));
                 headerPrinterButton.title = printerConnected ? uiState.summary : "Connect Thermal Printer";
+                if (state.printer.errorMessage) {
+                    headerPrinterButton.title = `Printer error: ${state.printer.errorMessage}`;
+                }
                 headerPrinterButton.setAttribute("aria-label", headerPrinterButton.title);
             }
             const printReceiptButton = document.getElementById("printReceiptBtn");
@@ -2557,6 +2759,7 @@
             printer.bluetoothConnected = false;
             printer.deviceLabel = "";
             printer.connectionType = "";
+            printer.errorMessage = "";
             updatePrinterStatus();
 
             if (showMessage) {
@@ -2579,6 +2782,7 @@
             state.printer.hidConnected = true;
             state.printer.deviceLabel = device?.productName || "HID printer";
             state.printer.connectionType = "hid";
+            state.printer.errorMessage = "";
             updatePrinterStatus();
 
             if (closeModal) {
@@ -2630,6 +2834,7 @@
             state.printer.bluetoothConnected = true;
             state.printer.deviceLabel = device?.name || "Bluetooth printer";
             state.printer.connectionType = "bluetooth";
+            state.printer.errorMessage = "";
             state.printer.bluetoothServer = null;
             state.printer.bluetoothCharacteristic = null;
 
@@ -2698,6 +2903,7 @@
             state.printer.serialConnected = true;
             state.printer.deviceLabel = deviceLabel || `Serial printer ${openedBaudRate}`;
             state.printer.connectionType = "serial";
+            state.printer.errorMessage = "";
             updatePrinterStatus();
 
             if (closeModal) {
@@ -2764,11 +2970,14 @@
                 showToast("Browser printer search is not available here", "error");
             } catch (error) {
                 console.error("Printer device search failed:", error);
-                updatePrinterStatus();
                 if (error?.name === "NotFoundError") {
+                    state.printer.errorMessage = "";
+                    updatePrinterStatus();
                     showToast("No printer device selected", "info");
                     return;
                 }
+                state.printer.errorMessage = `Connection failed: ${error.message || "Unknown printer error"}`;
+                updatePrinterStatus();
                 showToast(`Failed to connect printer: ${error.message}`, "error");
             } finally {
                 setPrinterSearchButtonsLoading(false);
@@ -3409,11 +3618,18 @@
             }, 150);
         }
 
-        function switchPage(pageId) {
+        function switchPage(pageId, options = {}) {
+            const { force = false } = options;
+            if (pageId === "catalogPage" && !state.productsUnlocked && !force) {
+                openProductPasswordModal();
+                return false;
+            }
+
             state.currentPage = pageId;
             stopScanner(false);
             closePrinterModal();
             closeHardwareScannerModal();
+            closeProductPasswordModal();
 
             document.querySelectorAll(".page-panel").forEach((panel) => {
                 panel.classList.toggle("active", panel.id === pageId);
@@ -3427,6 +3643,8 @@
                 renderOwnerReports();
                 switchSettingsTab(state.settingsTab || "reports");
             }
+
+            return true;
         }
 
         function getProductByCodeFromState(code) {
@@ -3788,30 +4006,36 @@
         function renderLowStockList() {
             const target = document.getElementById("lowStockList");
             const summaryTarget = document.getElementById("lowStockSummary");
+            const productSummaryTarget = document.getElementById("productLowStockSummary");
             const countBadge = document.getElementById("lowStockCountBadge");
+            const productCountBadge = document.getElementById("productLowStockCountBadge");
             const threshold = Number(state.lowStockThreshold || 0);
             const lowStockProducts = state.products
                 .filter((product) => Number(product.stock || 0) <= threshold)
                 .sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0) || a.name.localeCompare(b.name));
 
-            countBadge.textContent = String(lowStockProducts.length);
+            [countBadge, productCountBadge].filter(Boolean).forEach((badge) => {
+                badge.textContent = String(lowStockProducts.length);
+            });
             syncLowStockThresholdInput();
 
             if (!lowStockProducts.length) {
                 target.innerHTML = `<div class="empty-state">No low stock products right now.</div>`;
-                summaryTarget.className = "lookup-result";
-                summaryTarget.innerHTML = `
+                const emptySummaryMarkup = `
                     <div class="lookup-title">Stock looks good</div>
                     <div class="muted">No products are currently at ${threshold} or below.</div>
                 `;
+                [summaryTarget, productSummaryTarget].filter(Boolean).forEach((summary) => {
+                    summary.className = "lookup-result";
+                    summary.innerHTML = emptySummaryMarkup;
+                });
                 return;
             }
 
             const outCount = lowStockProducts.filter((product) => Number(product.stock || 0) <= 0).length;
             const criticalCount = lowStockProducts.filter((product) => Number(product.stock || 0) > 0 && Number(product.stock || 0) <= threshold).length;
 
-            summaryTarget.className = "lookup-result";
-            summaryTarget.innerHTML = `
+            const summaryMarkup = `
                 <div class="lookup-title">${lowStockProducts.length} low stock products found</div>
                 <div class="lookup-meta">
                     <span><i class="fas fa-circle-exclamation"></i> Out of stock: ${outCount}</span>
@@ -3819,15 +4043,24 @@
                 </div>
                 <div class="muted">Click Show All Low Stocks to open the full popup list.</div>
             `;
+            [summaryTarget, productSummaryTarget].filter(Boolean).forEach((summary) => {
+                summary.className = "lookup-result";
+                summary.innerHTML = summaryMarkup;
+            });
 
             target.innerHTML = lowStockProducts.map((product) => `
-                <div class="report-item">
+                <div class="report-item ${Number(product.stock || 0) <= 0 ? "out" : "low"}">
                     <div class="report-item-top">
                         <div>
-                            <div class="report-title">${escapeHtml(product.name)}</div>
+                            <div class="report-title product-name-color" style="color: ${getProductNameColor(product)};">${escapeHtml(product.name)}</div>
                             <div class="muted">${escapeHtml(product.scanCode)} | ${escapeHtml(product.category || "No category")}</div>
                         </div>
-                        <div class="price-pill">${formatCurrency(product.price)}</div>
+                        <div class="inline-actions">
+                            <div class="product-stock-pill ${Number(product.stock || 0) <= 0 ? "out" : "low"}">
+                                ${escapeHtml(Number(product.stock || 0))}${product.unit ? ` ${escapeHtml(product.unit)}` : ""}
+                            </div>
+                            <div class="price-pill">${formatCurrency(product.price)}</div>
+                        </div>
                     </div>
                     <div class="report-meta">
                         <span><i class="fas fa-cubes"></i> Stock: ${escapeHtml(product.stock)}</span>
@@ -4077,6 +4310,26 @@
             return state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         }
 
+        function applyCompletedSaleLocally(sale) {
+            sale.items.forEach((item) => {
+                const product = getProductByCodeFromState(item.scanCode);
+                if (product) {
+                    product.stock = Math.max(0, Number(product.stock || 0) - Number(item.quantity || 0));
+                    product.updatedAtDate = new Date();
+                }
+            });
+
+            state.sales.unshift({
+                ...sale,
+                createdAtText: sale.createdAtText || new Date().toLocaleString(),
+                createdAtDate: new Date(),
+                itemCount: sale.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+            });
+
+            renderCatalogProducts();
+            renderOwnerReports();
+        }
+
         function updatePaymentSummary() {
             const total = getCartTotal();
             const cashValue = Number(document.getElementById("cashReceivedInput").value || 0);
@@ -4226,6 +4479,7 @@
             document.getElementById("catalogUnit").value = product?.unit || "";
             document.getElementById("catalogNotes").value = product?.notes || "";
             setCatalogImagePreview(product?.imageData || "");
+            syncCatalogCategorySelect();
             syncCatalogPreviewFromForm();
         }
 
@@ -4236,9 +4490,105 @@
             renderCatalogPreview(null, "");
         }
 
+        function toggleCatalogLowStockFilter() {
+            state.catalogLowStockOnly = !state.catalogLowStockOnly;
+            renderCatalogProducts();
+            showToast(state.catalogLowStockOnly ? "Showing low stocks only" : "Showing all products", "info");
+        }
+
+        function openProductLowStocks() {
+            state.catalogLowStockOnly = true;
+            openSavedProductsModal();
+            showToast("Showing low stocks only", "info");
+        }
+
+        function getCatalogCategories() {
+            return [...new Set(state.products
+                .map((product) => String(product.category || "").trim())
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b));
+        }
+
+        function syncCatalogCategorySelect() {
+            const select = document.getElementById("catalogCategorySelect");
+            const input = document.getElementById("catalogCategory");
+            if (!select || !input) {
+                return;
+            }
+
+            const currentValue = input.value.trim();
+            const categories = getCatalogCategories();
+
+            select.innerHTML = `
+                <option value="">Manual / New category</option>
+                ${categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}
+            `;
+
+            select.value = categories.includes(currentValue) ? currentValue : "";
+        }
+
+        function handleCatalogCategorySelect() {
+            const select = document.getElementById("catalogCategorySelect");
+            const input = document.getElementById("catalogCategory");
+            if (!select || !input) {
+                return;
+            }
+
+            if (select.value) {
+                input.value = select.value;
+            } else {
+                input.focus();
+            }
+
+            syncCatalogPreviewFromForm();
+        }
+
+        function syncCatalogCategorySelectFromInput() {
+            const select = document.getElementById("catalogCategorySelect");
+            const input = document.getElementById("catalogCategory");
+            if (!select || !input) {
+                return;
+            }
+
+            const categories = getCatalogCategories();
+            const currentValue = input.value.trim();
+            select.value = categories.includes(currentValue) ? currentValue : "";
+        }
+
+        function syncCatalogCategoryFilter() {
+            const filter = document.getElementById("catalogCategoryFilter");
+            if (!filter) {
+                return "";
+            }
+
+            const currentValue = filter.value;
+            const categories = getCatalogCategories();
+
+            filter.innerHTML = `
+                <option value="">All categories</option>
+                ${categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}
+            `;
+
+            if (categories.includes(currentValue)) {
+                filter.value = currentValue;
+            }
+
+            return filter.value;
+        }
+
         function renderCatalogProducts() {
             const list = document.getElementById("catalogProductList");
             const searchValue = document.getElementById("catalogSearchInput")?.value.trim().toLowerCase() || "";
+            syncCatalogCategorySelect();
+            const categoryFilter = syncCatalogCategoryFilter().toLowerCase();
+            const threshold = Number(state.lowStockThreshold || 0);
+            const lowStockButton = document.getElementById("filterLowStockProductsBtn");
+            if (lowStockButton) {
+                lowStockButton.innerHTML = state.catalogLowStockOnly
+                    ? '<i class="fas fa-list"></i> Show All'
+                    : '<i class="fas fa-triangle-exclamation"></i> Low Stocks';
+                lowStockButton.className = state.catalogLowStockOnly ? "btn-secondary" : "btn-danger";
+            }
 
             if (!state.products.length) {
                 list.innerHTML = `<div class="empty-state">No saved products yet. Use the setup form to add your first product.</div>`;
@@ -4246,6 +4596,15 @@
             }
 
             const filteredProducts = state.products.filter((product) => {
+                const isLowStock = Number(product.stock || 0) <= threshold;
+                if (state.catalogLowStockOnly && !isLowStock) {
+                    return false;
+                }
+
+                if (categoryFilter && String(product.category || "").trim().toLowerCase() !== categoryFilter) {
+                    return false;
+                }
+
                 if (!searchValue) {
                     return true;
                 }
@@ -4256,41 +4615,56 @@
             });
 
             if (!filteredProducts.length) {
-                list.innerHTML = `<div class="empty-state">No saved product matched your search.</div>`;
+                list.innerHTML = `<div class="empty-state">${state.catalogLowStockOnly ? "No low-stock products matched." : "No saved product matched your search."}</div>`;
                 return;
             }
 
-            list.innerHTML = filteredProducts.map((product) => `
-                <div class="product-item" data-product-code="${escapeHtml(product.scanCode)}">
-                    <div class="product-item-top">
-                        <div>
-                            ${product.imageData ? `<div class="image-preview" style="margin-bottom: 8px; width: 72px; height: 72px;"><img src="${product.imageData}" alt="${escapeHtml(product.name)}"></div>` : ""}
-                            <h4>${escapeHtml(product.name)}</h4>
-                            <div class="muted">${escapeHtml(product.scanCode)} | Barcode</div>
+            list.innerHTML = filteredProducts.map((product) => {
+                const stock = Number(product.stock || 0);
+                const stockClass = stock <= 0 ? "out" : (stock <= threshold ? "low" : "");
+                const stockAmount = `${stock}${product.unit ? ` ${product.unit}` : ""}`;
+                const stockLabel = stock <= 0 ? `Out: ${stockAmount}` : (stock <= threshold ? `Low: ${stockAmount}` : `Stock: ${stockAmount}`);
+
+                return `
+                    <div class="product-item ${stockClass}" data-product-code="${escapeHtml(product.scanCode)}">
+                        <div class="product-item-top">
+                            <div>
+                                <h4 class="product-name-color" style="color: ${getProductNameColor(product)};">${escapeHtml(product.name)}</h4>
+                                <div class="muted">${escapeHtml(product.scanCode)}${product.category ? ` | ${escapeHtml(product.category)}` : ""}</div>
+                            </div>
+                            <div class="price-pill">${formatCurrency(product.price)}</div>
                         </div>
-                        <div class="price-pill">${formatCurrency(product.price)}</div>
+                        <div class="product-tags">
+                            <span class="product-stock-pill ${stockClass}">${escapeHtml(stockLabel)}</span>
+                            <span class="tag">Unit: ${escapeHtml(product.unit || "Not set")}</span>
+                        </div>
+                        ${product.notes ? `<div class="muted">${escapeHtml(product.notes)}</div>` : ""}
+                        <div class="stock-actions">
+                            <button class="btn-ghost btn-small" data-stock-adjust="${escapeHtml(product.scanCode)}" data-stock-delta="1">
+                                <i class="fas fa-plus"></i> Stock
+                            </button>
+                            <button class="btn-ghost btn-small" data-stock-adjust="${escapeHtml(product.scanCode)}" data-stock-delta="-1">
+                                <i class="fas fa-minus"></i> Stock
+                            </button>
+                            <button class="btn-ghost btn-small" data-stock-set="${escapeHtml(product.scanCode)}">
+                                <i class="fas fa-boxes-stacked"></i> Set
+                            </button>
+                        </div>
+                        <div class="product-item-actions">
+                            <button class="btn-ghost btn-small" data-product-edit="${escapeHtml(product.scanCode)}">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                            <button class="btn-danger btn-small" data-product-delete="${escapeHtml(product.scanCode)}" data-product-name="${escapeHtml(product.name)}">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
                     </div>
-                    <div class="product-tags">
-                        <span class="tag">Category: ${escapeHtml(product.category || "None")}</span>
-                        <span class="tag">Stock: ${escapeHtml(product.stock)}</span>
-                        <span class="tag">Unit: ${escapeHtml(product.unit || "Not set")}</span>
-                    </div>
-                    ${getLowStockMarkup(product.stock)}
-                    ${product.notes ? `<div class="muted">${escapeHtml(product.notes)}</div>` : ""}
-                    <div class="product-item-actions">
-                        <button class="btn-ghost btn-small" data-product-edit="${escapeHtml(product.scanCode)}">
-                            <i class="fas fa-pen"></i> Edit
-                        </button>
-                        <button class="btn-danger btn-small" data-product-delete="${escapeHtml(product.scanCode)}" data-product-name="${escapeHtml(product.name)}">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
-                </div>
-            `).join("");
+                `;
+            }).join("");
 
             list.querySelectorAll("[data-product-code]").forEach((item) => {
                 item.addEventListener("click", async (event) => {
-                    if (event.target.closest("[data-product-edit], [data-product-delete]")) {
+                    if (event.target.closest("[data-product-edit], [data-product-delete], [data-stock-adjust], [data-stock-set]")) {
                         return;
                     }
                     const code = item.dataset.productCode;
@@ -4332,6 +4706,18 @@
                         return;
                     }
                     await deleteProduct(code);
+                });
+            });
+
+            list.querySelectorAll("[data-stock-adjust]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    await adjustProductStock(button.dataset.stockAdjust, Number(button.dataset.stockDelta || 0));
+                });
+            });
+
+            list.querySelectorAll("[data-stock-set]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    await setProductStockFromPrompt(button.dataset.stockSet);
                 });
             });
         }
@@ -4528,6 +4914,63 @@
             }
         }
 
+        async function updateProductStockValue(code, nextStock) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            const cleanStock = Math.max(0, Math.floor(Number(nextStock || 0)));
+
+            try {
+                await setDoc(doc(db, "products", code), {
+                    stock: cleanStock,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                product.stock = cleanStock;
+                product.updatedAtDate = new Date();
+                renderCatalogProducts();
+                renderManualBarcodeMatches("catalog");
+                renderOwnerReports();
+                showToast(`${product.name} stock updated to ${cleanStock}`, "success");
+            } catch (error) {
+                console.error("Failed to update stock:", error);
+                showToast(`Failed to update stock: ${error.message}`, "error");
+            }
+        }
+
+        async function adjustProductStock(code, delta) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            await updateProductStockValue(code, Number(product.stock || 0) + Number(delta || 0));
+        }
+
+        async function setProductStockFromPrompt(code) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            const value = window.prompt(`Set stock for ${product.name}`, String(product.stock ?? 0));
+            if (value === null) {
+                return;
+            }
+
+            const nextStock = Number(value);
+            if (!Number.isFinite(nextStock) || nextStock < 0) {
+                showToast("Enter a valid stock number", "error");
+                return;
+            }
+
+            await updateProductStockValue(code, nextStock);
+        }
+
         async function completeSale() {
             if (!state.cart.length) {
                 showToast("Cart is empty", "error");
@@ -4577,7 +5020,7 @@
                 const batch = writeBatch(db);
 
                 for (const item of state.cart) {
-                    const currentProduct = await lookupProduct(item.scanCode);
+                    const currentProduct = getProductByCodeFromState(item.scanCode) || await lookupProduct(item.scanCode);
                     if (!currentProduct) {
                         showToast(`${item.name} is missing from the products database`);
                         return;
@@ -4608,8 +5051,7 @@
                     }))
                 };
                 updatePrintButton();
-                await fetchProducts();
-                await fetchSales({ silent: true });
+                applyCompletedSaleLocally(state.lastSale);
                 clearCart({ silent: true });
                 const result = document.getElementById("posLookupResult");
                 if (result) {
@@ -4617,9 +5059,18 @@
                     result.textContent = "Sale completed. Scan or enter the next product to start a new cart.";
                 }
                 showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`, "success");
+                openSaleCompleteModal(total, change);
                 if (state.autoReceiptEnabled) {
-                    await printReceipt({ fallbackToBrowser: false });
+                    printReceipt({ fallbackToBrowser: false }).catch((error) => {
+                        console.warn("Automatic receipt failed:", error);
+                    });
                 }
+                Promise.all([
+                    fetchProducts(),
+                    fetchSales({ silent: true })
+                ]).catch((error) => {
+                    console.warn("Background sale refresh failed:", error);
+                });
             } catch (error) {
                 console.error("Failed to complete sale:", error);
                 showToast(`Failed to save sale: ${error.message}`, "error");
@@ -4685,6 +5136,8 @@
         async function printReceiptToSerial(bytes) {
             const port = state.printer.serialPort;
             if (!port?.writable) {
+                state.printer.errorMessage = "Serial printer is connected but not writable. Reconnect the thermal printer.";
+                updatePrinterStatus();
                 return false;
             }
 
@@ -4702,6 +5155,8 @@
             const device = printer.bluetoothDevice;
 
             if (!device?.gatt) {
+                state.printer.errorMessage = "Bluetooth printer does not expose browser printing. Try Windows print or reconnect.";
+                updatePrinterStatus();
                 return false;
             }
 
@@ -4713,6 +5168,8 @@
 
             const characteristic = printer.bluetoothCharacteristic;
             if (!characteristic) {
+                state.printer.errorMessage = "Bluetooth printer connected, but no writable receipt channel was found.";
+                updatePrinterStatus();
                 return false;
             }
 
@@ -4731,14 +5188,20 @@
 
             try {
                 if (state.printer.serialConnected && await printReceiptToSerial(bytes)) {
+                    state.printer.errorMessage = "";
+                    updatePrinterStatus();
                     return true;
                 }
 
                 if (state.printer.bluetoothConnected && await printReceiptToBluetooth(bytes)) {
+                    state.printer.errorMessage = "";
+                    updatePrinterStatus();
                     return true;
                 }
             } catch (error) {
                 console.error("Direct thermal print failed:", error);
+                state.printer.errorMessage = `Print failed: ${error.message || "Unknown printer error"}`;
+                updatePrinterStatus();
                 showToast(`Direct printer failed: ${error.message}. Opening browser print.`, "error");
             }
 
@@ -4933,6 +5396,59 @@
             syncBodyModalState();
         }
 
+        function openProductPasswordModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            closeOwnerPasswordModal();
+            const modal = document.getElementById("productPasswordModal");
+            document.getElementById("productPasswordInput").value = "";
+            document.getElementById("productPasswordError").textContent = "";
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            window.setTimeout(() => {
+                document.getElementById("productPasswordInput").focus();
+            }, 0);
+        }
+
+        function closeProductPasswordModal() {
+            const modal = document.getElementById("productPasswordModal");
+            if (!modal) {
+                return;
+            }
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            document.getElementById("productPasswordError").textContent = "";
+            syncBodyModalState();
+        }
+
+        function openSaleCompleteModal(total, change) {
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            closeSavedProductsModal();
+            document.getElementById("saleCompleteTotal").textContent = formatCurrency(total);
+            document.getElementById("saleCompleteChange").textContent = formatCurrency(Math.max(change, 0));
+            const modal = document.getElementById("saleCompleteModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeSaleCompleteModal() {
+            const modal = document.getElementById("saleCompleteModal");
+            if (!modal) {
+                return;
+            }
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
         function openLowStockModal() {
             closePrinterModal();
             closeHardwareScannerModal();
@@ -5001,6 +5517,42 @@
             renderOwnerReports();
             await fetchSales({ silent: true });
             showToast("Owner settings unlocked", "success");
+        }
+
+        function submitProductPassword() {
+            const input = document.getElementById("productPasswordInput");
+            const error = document.getElementById("productPasswordError");
+            const password = input.value;
+
+            if (password !== state.productPagePassword) {
+                error.textContent = "Incorrect password. Try again.";
+                input.focus();
+                input.select();
+                showToast("Wrong Products password", "error");
+                return;
+            }
+
+            state.productsUnlocked = true;
+            closeProductPasswordModal();
+            switchPage("catalogPage", { force: true });
+            showToast("Products page unlocked", "success");
+        }
+
+        function saveProductPagePassword() {
+            const input = document.getElementById("productPagePasswordSettingInput");
+            const password = input.value.trim();
+
+            if (password.length < 4) {
+                showToast("Use at least 4 characters for the Products password", "error");
+                input.focus();
+                return;
+            }
+
+            state.productPagePassword = password;
+            state.productsUnlocked = false;
+            localStorage.setItem("kristelProductPagePassword", password);
+            input.value = "";
+            showToast("Products password saved", "success");
         }
 
         async function refreshOwnerReports() {
@@ -5144,8 +5696,15 @@
         document.getElementById("settingsReportsTabBtn").addEventListener("click", () => switchSettingsTab("reports"));
         document.getElementById("settingsToolsTabBtn").addEventListener("click", () => switchSettingsTab("tools"));
         document.getElementById("openSettingsBtn").addEventListener("click", openOwnerSettings);
+        document.getElementById("saveProductPagePasswordBtn").addEventListener("click", saveProductPagePassword);
+        document.getElementById("productPagePasswordSettingInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveProductPagePassword();
+            }
+        });
         document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
         document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
+        document.getElementById("productOpenLowStockModalBtn").addEventListener("click", openLowStockModal);
         document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
         const openPrinterModalBtn = document.getElementById("openPrinterModalBtn");
         if (openPrinterModalBtn) {
@@ -5158,6 +5717,7 @@
         document.getElementById("searchPrinterDeviceBtn").addEventListener("click", searchAvailablePrinterDevice);
         document.getElementById("disconnectPrinterBtn").addEventListener("click", () => disconnectPrinter());
         document.getElementById("saveLowStockThresholdBtn").addEventListener("click", saveLowStockThreshold);
+        document.getElementById("productSaveLowStockThresholdBtn").addEventListener("click", () => saveLowStockThreshold("productLowStockThresholdInput"));
         document.getElementById("backupProductsBtn").addEventListener("click", backupProducts);
         document.getElementById("backupSalesBtn").addEventListener("click", backupSales);
         document.getElementById("backupAllBtn").addEventListener("click", backupAllData);
@@ -5203,7 +5763,10 @@
                 closePrinterModal();
             }
         });
-        document.getElementById("openCatalogFormBtn").addEventListener("click", openCatalogFormModal);
+        document.getElementById("openCatalogFormBtn").addEventListener("click", () => {
+            resetCatalogForm();
+            openCatalogFormModal();
+        });
         document.getElementById("closeCatalogFormModalBtn").addEventListener("click", closeCatalogFormModal);
         document.getElementById("catalogFormModal").addEventListener("click", (event) => {
             if (event.target.id === "catalogFormModal") {
@@ -5215,6 +5778,19 @@
         document.getElementById("ownerPasswordModal").addEventListener("click", (event) => {
             if (event.target.id === "ownerPasswordModal") {
                 closeOwnerPasswordModal();
+            }
+        });
+        document.getElementById("closeProductPasswordModalBtn").addEventListener("click", closeProductPasswordModal);
+        document.getElementById("submitProductPasswordBtn").addEventListener("click", submitProductPassword);
+        document.getElementById("productPasswordModal").addEventListener("click", (event) => {
+            if (event.target.id === "productPasswordModal") {
+                closeProductPasswordModal();
+            }
+        });
+        document.getElementById("closeSaleCompleteModalBtn").addEventListener("click", closeSaleCompleteModal);
+        document.getElementById("saleCompleteModal").addEventListener("click", (event) => {
+            if (event.target.id === "saleCompleteModal") {
+                closeSaleCompleteModal();
             }
         });
         document.getElementById("closeLowStockModalBtn").addEventListener("click", closeLowStockModal);
@@ -5272,9 +5848,19 @@
                 submitOwnerPassword();
             }
         });
+        document.getElementById("productPasswordInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                submitProductPassword();
+            }
+        });
         document.getElementById("lowStockThresholdInput").addEventListener("keypress", (event) => {
             if (event.key === "Enter") {
                 saveLowStockThreshold();
+            }
+        });
+        document.getElementById("productLowStockThresholdInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveLowStockThreshold("productLowStockThresholdInput");
             }
         });
 
@@ -5283,6 +5869,8 @@
         document.getElementById("resetCatalogFormBtn").addEventListener("click", resetCatalogForm);
         document.getElementById("seedDemoProductsBtn").addEventListener("click", addDemoProducts);
         document.getElementById("refreshProductsBtn").addEventListener("click", fetchProducts);
+        document.getElementById("filterLowStockProductsBtn").addEventListener("click", toggleCatalogLowStockFilter);
+        document.getElementById("openProductLowStocksBtn").addEventListener("click", openProductLowStocks);
         document.getElementById("checkoutBtn").addEventListener("click", completeSale);
         document.getElementById("printReceiptBtn").addEventListener("click", printReceipt);
         document.getElementById("clearCartBtn").addEventListener("click", () => clearCart());
@@ -5299,6 +5887,9 @@
             posProductSearchInput.addEventListener("input", renderPosSearchResults);
         }
         document.getElementById("catalogSearchInput").addEventListener("input", renderCatalogProducts);
+        document.getElementById("catalogCategoryFilter").addEventListener("change", renderCatalogProducts);
+        document.getElementById("catalogCategorySelect").addEventListener("change", handleCatalogCategorySelect);
+        document.getElementById("catalogCategory").addEventListener("input", syncCatalogCategorySelectFromInput);
         [
             "catalogBarcode",
             "catalogName",
@@ -5337,6 +5928,16 @@
 
             if (document.getElementById("ownerPasswordModal").classList.contains("active")) {
                 closeOwnerPasswordModal();
+                return;
+            }
+
+            if (document.getElementById("productPasswordModal").classList.contains("active")) {
+                closeProductPasswordModal();
+                return;
+            }
+
+            if (document.getElementById("saleCompleteModal").classList.contains("active")) {
+                closeSaleCompleteModal();
                 return;
             }
 
