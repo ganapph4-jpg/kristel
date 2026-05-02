@@ -5435,4 +5435,1181 @@
                 await fetchProducts();
                 renderCart();
 
-                if (document.getElementById("catalogBarcode").value
+                if (document.getElementById("catalogBarcode").value.trim() === code) {
+                    resetCatalogForm();
+                }
+
+                showToast("Product deleted");
+            } catch (error) {
+                console.error("Failed to delete product:", error);
+                showToast(`Failed to delete product: ${error.message}`);
+            }
+        }
+
+        async function updateProductStockValue(code, nextStock) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            const cleanStock = Math.max(0, Math.floor(Number(nextStock || 0)));
+
+            try {
+                await setDoc(doc(db, "products", code), {
+                    stock: cleanStock,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                product.stock = cleanStock;
+                product.updatedAtDate = new Date();
+                renderCatalogProducts();
+                renderManualBarcodeMatches("catalog");
+                renderOwnerReports();
+                showToast(`${product.name} stock updated to ${cleanStock}`, "success");
+            } catch (error) {
+                console.error("Failed to update stock:", error);
+                showToast(`Failed to update stock: ${error.message}`, "error");
+            }
+        }
+
+        async function enrichProductsWithBarcodeDetails() {
+            const button = document.getElementById("enrichProductsBtn");
+            const productsToCheck = state.products.filter(productNeedsDetails);
+
+            if (!productsToCheck.length) {
+                showToast("All saved products already show available details", "success");
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Filling...';
+            }
+
+            let updated = 0;
+            let checked = 0;
+
+            try {
+                for (const product of productsToCheck) {
+                    checked += 1;
+                    const suggestion = await fetchBarcodeSuggestion(product.scanCode);
+                    if (!suggestion) {
+                        continue;
+                    }
+
+                    const mergedProduct = mergeProductWithSuggestion(product, suggestion);
+                    if (!productNeedsDetails(product) || JSON.stringify(mergedProduct) === JSON.stringify(product)) {
+                        continue;
+                    }
+
+                    await setDoc(doc(db, "products", product.scanCode), {
+                        name: mergedProduct.name,
+                        category: mergedProduct.category,
+                        unit: mergedProduct.unit,
+                        notes: mergedProduct.notes,
+                        imageData: mergedProduct.imageData,
+                        updatedAt: serverTimestamp()
+                    }, { merge: true });
+                    updated += 1;
+                }
+
+                await fetchProducts();
+                showToast(
+                    updated
+                        ? `Filled details for ${updated} of ${checked} products`
+                        : "No extra online details found yet",
+                    updated ? "success" : "info"
+                );
+            } catch (error) {
+                console.error("Failed to fill product details:", error);
+                showToast(`Failed to fill details: ${error.message}`, "error");
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Fill Missing Details';
+                }
+            }
+        }
+
+        async function adjustProductStock(code, delta) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            await updateProductStockValue(code, Number(product.stock || 0) + Number(delta || 0));
+        }
+
+        async function setProductStockFromPrompt(code) {
+            const product = getProductByCodeFromState(code);
+            if (!product) {
+                showToast("Product could not be loaded", "error");
+                return;
+            }
+
+            const value = window.prompt(`Set stock for ${product.name}`, String(product.stock ?? 0));
+            if (value === null) {
+                return;
+            }
+
+            const nextStock = Number(value);
+            if (!Number.isFinite(nextStock) || nextStock < 0) {
+                showToast("Enter a valid stock number", "error");
+                return;
+            }
+
+            await updateProductStockValue(code, nextStock);
+        }
+
+        async function completeSale() {
+            if (!state.cart.length) {
+                showToast("Cart is empty", "error");
+                return;
+            }
+
+            const total = getCartTotal();
+            const cashReceived = Number(document.getElementById("cashReceivedInput").value || 0);
+            const change = cashReceived - total;
+
+            if (!Number.isFinite(cashReceived) || cashReceived <= 0) {
+                showToast("Enter cash received first", "error");
+                return;
+            }
+
+            if (change < 0) {
+                showToast(`Customer still lacks ${formatCurrency(Math.abs(change))}`, "error");
+                return;
+            }
+
+            setButtonLoading(
+                "checkoutBtn",
+                true,
+                '<i class="fas fa-check-circle"></i> Complete Sale',
+                '<i class="fas fa-spinner fa-spin"></i> Saving Sale...'
+            );
+
+            const saleData = {
+                saleId: `SALE-${Date.now()}`,
+                total,
+                cashReceived,
+                change,
+                status: "completed",
+                createdAt: serverTimestamp(),
+                items: state.cart.map((item) => ({
+                    scanCode: item.scanCode,
+                    codeType: item.codeType,
+                    name: item.name,
+                    category: item.category,
+                    price: item.price,
+                    quantity: item.quantity,
+                    lineTotal: item.quantity * item.price
+                }))
+            };
+
+            try {
+                const batch = writeBatch(db);
+
+                for (const item of state.cart) {
+                    const currentProduct = getProductByCodeFromState(item.scanCode) || await lookupProduct(item.scanCode);
+                    if (!currentProduct) {
+                        showToast(`${item.name} is missing from the products database`);
+                        return;
+                    }
+
+                    const remainingStock = Number(currentProduct.stock || 0) - item.quantity;
+                    if (remainingStock < 0) {
+                        showToast(`Not enough stock for ${item.name}`);
+                        return;
+                    }
+
+                    batch.set(doc(db, "products", item.scanCode), {
+                        stock: remainingStock,
+                        updatedAt: serverTimestamp()
+                    }, { merge: true });
+                }
+
+                const saleRef = doc(collection(db, "sales"));
+                batch.set(saleRef, saleData);
+                await batch.commit();
+
+                state.lastSale = {
+                    ...saleData,
+                    createdAtText: new Date().toLocaleString(),
+                    items: state.cart.map((item) => ({
+                        ...item,
+                        lineTotal: item.quantity * item.price
+                    }))
+                };
+                updatePrintButton();
+                applyCompletedSaleLocally(state.lastSale);
+                clearCart({ silent: true });
+                const result = document.getElementById("posLookupResult");
+                if (result) {
+                    result.className = "lookup-result empty";
+                    result.textContent = "Sale completed. Scan or enter the next product to start a new cart.";
+                }
+                showToast(`Sale saved. Total: ${formatCurrency(total)}, change: ${formatCurrency(change)}`, "success");
+                openSaleCompleteModal(total, change);
+                if (state.autoReceiptEnabled) {
+                    printReceipt({ fallbackToBrowser: false }).catch((error) => {
+                        console.warn("Automatic receipt failed:", error);
+                    });
+                }
+                Promise.all([
+                    fetchProducts(),
+                    fetchSales({ silent: true })
+                ]).catch((error) => {
+                    console.warn("Background sale refresh failed:", error);
+                });
+            } catch (error) {
+                console.error("Failed to complete sale:", error);
+                showToast(`Failed to save sale: ${error.message}`, "error");
+            } finally {
+                setButtonLoading(
+                    "checkoutBtn",
+                    false,
+                    '<i class="fas fa-check-circle"></i> Complete Sale',
+                    '<i class="fas fa-spinner fa-spin"></i> Saving Sale...'
+                );
+            }
+        }
+
+        function padReceiptLine(left, right, width = 32) {
+            const cleanLeft = String(left || "");
+            const cleanRight = String(right || "");
+            const available = Math.max(1, width - cleanRight.length - 1);
+            const clippedLeft = cleanLeft.length > available ? cleanLeft.slice(0, available) : cleanLeft;
+            return `${clippedLeft}${" ".repeat(Math.max(1, width - clippedLeft.length - cleanRight.length))}${cleanRight}`;
+        }
+
+        function buildThermalReceiptText() {
+            const sale = state.lastSale;
+            const lines = [
+                "\x1B@",
+                "\x1Ba\x01",
+                "KRISTEL SARI-SARI STORE",
+                "Receipt",
+                "\x1Ba\x00",
+                "--------------------------------",
+                `Sale ID: ${sale.saleId}`,
+                `Date: ${sale.createdAtText}`,
+                "--------------------------------"
+            ];
+
+            sale.items.forEach((item) => {
+                const quantityLine = `${item.quantity} x ${formatCurrency(item.price)}`;
+                lines.push(String(item.name || "Item").slice(0, 32));
+                lines.push(padReceiptLine(quantityLine, formatCurrency(item.lineTotal)));
+            });
+
+            lines.push(
+                "--------------------------------",
+                padReceiptLine("TOTAL", formatCurrency(sale.total)),
+                padReceiptLine("Cash", formatCurrency(sale.cashReceived)),
+                padReceiptLine("Change", formatCurrency(sale.change)),
+                "--------------------------------",
+                "\x1Ba\x01",
+                "Thank you!",
+                "\n\n\n",
+                "\x1DVA\x00"
+            );
+
+            return `${lines.join("\n")}\n`;
+        }
+
+        async function writePrinterChunks(writeChunk, bytes, chunkSize = 180) {
+            for (let index = 0; index < bytes.length; index += chunkSize) {
+                await writeChunk(bytes.slice(index, index + chunkSize));
+            }
+        }
+
+        async function printReceiptToSerial(bytes) {
+            const port = state.printer.serialPort;
+            if (!port?.writable) {
+                state.printer.errorMessage = "Serial printer is connected but not writable. Reconnect the thermal printer.";
+                updatePrinterStatus();
+                return false;
+            }
+
+            const writer = port.writable.getWriter();
+            try {
+                await writer.write(bytes);
+                return true;
+            } finally {
+                writer.releaseLock();
+            }
+        }
+
+        async function printReceiptToBluetooth(bytes) {
+            const printer = state.printer;
+            const device = printer.bluetoothDevice;
+
+            if (!device?.gatt) {
+                state.printer.errorMessage = "Bluetooth printer does not expose browser printing. Try Windows print or reconnect.";
+                updatePrinterStatus();
+                return false;
+            }
+
+            if (!device.gatt.connected) {
+                printer.bluetoothServer = await device.gatt.connect();
+                printer.bluetoothCharacteristic = await findBluetoothPrinterCharacteristic(printer.bluetoothServer);
+                updatePrinterStatus();
+            }
+
+            const characteristic = printer.bluetoothCharacteristic;
+            if (!characteristic) {
+                state.printer.errorMessage = "Bluetooth printer connected, but no writable receipt channel was found.";
+                updatePrinterStatus();
+                return false;
+            }
+
+            await writePrinterChunks(async (chunk) => {
+                if (typeof characteristic.writeValueWithoutResponse === "function" && characteristic.properties?.writeWithoutResponse) {
+                    await characteristic.writeValueWithoutResponse(chunk);
+                    return;
+                }
+                await characteristic.writeValue(chunk);
+            }, bytes);
+            return true;
+        }
+
+        async function printReceiptToConnectedPrinter() {
+            const bytes = new TextEncoder().encode(buildThermalReceiptText());
+
+            try {
+                if (state.printer.serialConnected && await printReceiptToSerial(bytes)) {
+                    state.printer.errorMessage = "";
+                    updatePrinterStatus();
+                    return true;
+                }
+
+                if (state.printer.bluetoothConnected && await printReceiptToBluetooth(bytes)) {
+                    state.printer.errorMessage = "";
+                    updatePrinterStatus();
+                    return true;
+                }
+            } catch (error) {
+                console.error("Direct thermal print failed:", error);
+                state.printer.errorMessage = `Print failed: ${error.message || "Unknown printer error"}`;
+                updatePrinterStatus();
+                showToast(`Direct printer failed: ${error.message}. Opening browser print.`, "error");
+            }
+
+            return false;
+        }
+
+        function printReceiptWithBrowser() {
+            if (!state.lastSale) {
+                showToast("Complete a sale first to print a receipt");
+                return;
+            }
+
+            const receiptHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Receipt ${escapeHtml(state.lastSale.saleId)}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+                        .wrap { max-width: 360px; margin: 0 auto; }
+                        h1, p { margin: 0; }
+                        .top, .row, .item { display: flex; justify-content: space-between; gap: 12px; }
+                        .top { margin-bottom: 14px; }
+                        .meta { margin-bottom: 18px; font-size: 12px; color: #444; }
+                        .item { border-bottom: 1px dashed #ccc; padding: 8px 0; font-size: 14px; }
+                        .totals { margin-top: 14px; display: grid; gap: 8px; }
+                        .bold { font-weight: 700; }
+                    </style>
+                </head>
+                <body>
+                    <div class="wrap">
+                        <div class="top">
+                            <h1>Kristel Sari-Sari Store</h1>
+                        </div>
+                        <div class="meta">
+                            <div>Sale ID: ${escapeHtml(state.lastSale.saleId)}</div>
+                            <div>Date: ${escapeHtml(state.lastSale.createdAtText)}</div>
+                        </div>
+                        ${state.lastSale.items.map((item) => `
+                            <div class="item">
+                                <div>
+                                    <div class="bold">${escapeHtml(item.name)}</div>
+                                    <div>${escapeHtml(item.scanCode)} x ${item.quantity}</div>
+                                </div>
+                                <div>${formatCurrency(item.lineTotal)}</div>
+                            </div>
+                        `).join("")}
+                        <div class="totals">
+                            <div class="row"><span>Total</span><span>${formatCurrency(state.lastSale.total)}</span></div>
+                            <div class="row"><span>Cash</span><span>${formatCurrency(state.lastSale.cashReceived)}</span></div>
+                            <div class="row bold"><span>Change</span><span>${formatCurrency(state.lastSale.change)}</span></div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const printWindow = window.open("", "_blank", "width=420,height=720");
+            if (!printWindow) {
+                showToast("Popup blocked. Allow popups to print receipts.");
+                return;
+            }
+
+            printWindow.document.open();
+            printWindow.document.write(receiptHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+
+        async function printReceipt(options = {}) {
+            const { fallbackToBrowser = true } = options;
+            if (!state.lastSale) {
+                showToast("Complete a sale first to print a receipt");
+                return;
+            }
+
+            const printedDirectly = await printReceiptToConnectedPrinter();
+            if (printedDirectly) {
+                showToast("Receipt sent to connected printer", "success");
+                return;
+            }
+
+            if (!fallbackToBrowser) {
+                showToast("Automatic receipt needs a connected thermal printer", "info");
+                return;
+            }
+
+            printReceiptWithBrowser();
+        }
+
+        function setScannerButtonState(buttonId, active) {
+            const button = document.getElementById(buttonId);
+            if (!button) {
+                return;
+            }
+
+            button.innerHTML = active
+                ? '<i class="fas fa-times"></i> Close Camera'
+                : '<i class="fas fa-camera"></i> Open Camera';
+        }
+
+        function syncBodyModalState() {
+            const hasActiveModal = document.querySelector(".camera-modal.active");
+            document.body.classList.toggle("modal-open", Boolean(hasActiveModal));
+        }
+
+        function openScannerModal(mode) {
+            const modal = document.getElementById("scannerModal");
+            const title = document.getElementById("scannerModalTitle");
+            const message = document.getElementById("scannerModalMessage");
+            const viewport = document.getElementById("scannerModalViewport");
+
+            title.textContent = mode === "pos" ? "POS Camera Scanner" : "Add Product Camera";
+            message.textContent = mode === "pos"
+                ? "Point the camera at one barcode to add the product to cart."
+                : "Point the camera at one barcode to load product details for saving.";
+            viewport.classList.add("active");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeScannerModal() {
+            const modal = document.getElementById("scannerModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openCatalogFormModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closePrinterModal();
+            closeHardwareScannerModal();
+            const modal = document.getElementById("catalogFormModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+
+            window.setTimeout(() => {
+                const barcodeField = document.getElementById("catalogBarcode");
+                const nameField = document.getElementById("catalogName");
+                const stockField = document.getElementById("catalogStock");
+
+                if (!barcodeField.value.trim()) {
+                    barcodeField.focus();
+                    return;
+                }
+
+                if (!nameField.value.trim()) {
+                    nameField.focus();
+                    return;
+                }
+
+                stockField.focus();
+            }, 0);
+        }
+
+        function closeCatalogFormModal() {
+            const modal = document.getElementById("catalogFormModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openOwnerPasswordModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            const modal = document.getElementById("ownerPasswordModal");
+            document.getElementById("ownerPasswordInput").value = "";
+            document.getElementById("ownerPasswordError").textContent = "";
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            window.setTimeout(() => {
+                document.getElementById("ownerPasswordInput").focus();
+            }, 0);
+        }
+
+        function closeOwnerPasswordModal() {
+            const modal = document.getElementById("ownerPasswordModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            document.getElementById("ownerPasswordError").textContent = "";
+            syncBodyModalState();
+        }
+
+        function openProductPasswordModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            closeOwnerPasswordModal();
+            const modal = document.getElementById("productPasswordModal");
+            document.getElementById("productPasswordInput").value = "";
+            document.getElementById("productPasswordError").textContent = "";
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            window.setTimeout(() => {
+                document.getElementById("productPasswordInput").focus();
+            }, 0);
+        }
+
+        function closeProductPasswordModal() {
+            const modal = document.getElementById("productPasswordModal");
+            if (!modal) {
+                return;
+            }
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            document.getElementById("productPasswordError").textContent = "";
+            syncBodyModalState();
+        }
+
+        function openSaleCompleteModal(total, change) {
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            closeSavedProductsModal();
+            document.getElementById("saleCompleteTotal").textContent = formatCurrency(total);
+            document.getElementById("saleCompleteChange").textContent = formatCurrency(Math.max(change, 0));
+            const modal = document.getElementById("saleCompleteModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeSaleCompleteModal() {
+            const modal = document.getElementById("saleCompleteModal");
+            if (!modal) {
+                return;
+            }
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openLowStockModal() {
+            closePrinterModal();
+            closeHardwareScannerModal();
+            const modal = document.getElementById("lowStockModal");
+            renderLowStockList();
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+        }
+
+        function closeLowStockModal() {
+            const modal = document.getElementById("lowStockModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        function openSavedProductsModal() {
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+            closePrinterModal();
+            closeHardwareScannerModal();
+            closeCatalogFormModal();
+            const modal = document.getElementById("savedProductsModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+            syncBodyModalState();
+            renderCatalogProducts();
+        }
+
+        function closeSavedProductsModal() {
+            const modal = document.getElementById("savedProductsModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+            syncBodyModalState();
+        }
+
+        async function openOwnerSettings() {
+            if (!state.ownerUnlocked) {
+                openOwnerPasswordModal();
+                return;
+            }
+
+            switchPage("settingsPage");
+            renderOwnerReports();
+            await fetchSales({ silent: true });
+        }
+
+        async function submitOwnerPassword() {
+            const input = document.getElementById("ownerPasswordInput");
+            const error = document.getElementById("ownerPasswordError");
+            const password = input.value;
+
+            if (password !== OWNER_PASSWORD) {
+                error.textContent = "Incorrect password. Try again.";
+                input.focus();
+                input.select();
+                showToast("Wrong owner password", "error");
+                return;
+            }
+
+            state.ownerUnlocked = true;
+            closeOwnerPasswordModal();
+            switchPage("settingsPage");
+            renderOwnerReports();
+            await fetchSales({ silent: true });
+            showToast("Owner settings unlocked", "success");
+        }
+
+        function submitProductPassword() {
+            const input = document.getElementById("productPasswordInput");
+            const error = document.getElementById("productPasswordError");
+            const password = input.value;
+
+            if (password !== state.productPagePassword) {
+                error.textContent = "Incorrect password. Try again.";
+                input.focus();
+                input.select();
+                showToast("Wrong Products password", "error");
+                return;
+            }
+
+            state.productsUnlocked = true;
+            closeProductPasswordModal();
+            switchPage("catalogPage", { force: true });
+            showToast("Products page unlocked", "success");
+        }
+
+        function saveProductPagePassword() {
+            const input = document.getElementById("productPagePasswordSettingInput");
+            const password = input.value.trim();
+
+            if (password.length < 4) {
+                showToast("Use at least 4 characters for the Products password", "error");
+                input.focus();
+                return;
+            }
+
+            state.productPagePassword = password;
+            state.productsUnlocked = false;
+            localStorage.setItem("kristelProductPagePassword", password);
+            input.value = "";
+            showToast("Products password saved", "success");
+        }
+
+        async function refreshOwnerReports() {
+            await fetchProducts();
+            await fetchSales({ silent: true });
+            showToast("Owner reports refreshed", "success");
+        }
+
+        function resetScannerViewport() {
+            const viewport = document.getElementById("scannerModalViewport");
+            viewport.classList.remove("active");
+            viewport.innerHTML = "";
+            closeScannerModal();
+        }
+
+        function stopScanner(showMessage = true) {
+            if (state.scanner.active) {
+                const scannerInstance = state.scanner.instance;
+                state.scanner.active = false;
+
+                if (scannerInstance) {
+                    scannerInstance.stop()
+                        .catch((error) => {
+                            console.warn("Scanner stop warning:", error);
+                        })
+                        .finally(() => {
+                            scannerInstance.clear().catch(() => {});
+                        });
+                }
+            }
+
+            setScannerButtonState("togglePosScannerBtn", false);
+            setScannerButtonState("toggleCatalogScannerBtn", false);
+            resetScannerViewport();
+
+            state.scanner.active = false;
+            state.scanner.mode = null;
+            state.scanner.viewportId = null;
+            state.scanner.instance = null;
+            state.scanner.pauseUntil = 0;
+            state.scanner.processing = false;
+
+            if (showMessage) {
+                showToast("Camera closed", "info");
+            }
+        }
+
+        function onCodeDetected(decodedText) {
+            const now = Date.now();
+            if (state.scanner.processing || now < state.scanner.pauseUntil) {
+                return;
+            }
+
+            const code = normalizeScannedCode(decodedText);
+            const mode = state.scanner.mode;
+
+            if (!code) {
+                return;
+            }
+
+            state.scanner.processing = true;
+            state.scanner.pauseUntil = now + 1500;
+            playScanBeep();
+            showScanFlash("Scan Success");
+            stopScanner(false);
+
+            if (mode === "pos") {
+                handlePosLookup(code, true);
+            } else if (mode === "catalog") {
+                handleCatalogLookup(code);
+            }
+        }
+
+        async function startScanner(mode) {
+            const targetId = "scannerModalViewport";
+
+            if (state.scanner.active) {
+                stopScanner(false);
+            }
+
+            closeCatalogFormModal();
+
+            if (typeof Html5Qrcode === "undefined") {
+                showToast("Scanner library is still loading. Please try again.", "error");
+                return;
+            }
+
+            await prepareScanBeep();
+
+            openScannerModal(mode);
+            const viewport = document.getElementById(targetId);
+            viewport.innerHTML = "";
+            viewport.classList.add("active");
+
+            const scannerInstance = new Html5Qrcode(targetId);
+
+            try {
+                await scannerInstance.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 240, height: 240 },
+                        aspectRatio: 1.333334,
+                        formatsToSupport: [
+                            Html5QrcodeSupportedFormats.EAN_13,
+                            Html5QrcodeSupportedFormats.EAN_8,
+                            Html5QrcodeSupportedFormats.UPC_A,
+                            Html5QrcodeSupportedFormats.UPC_E,
+                            Html5QrcodeSupportedFormats.CODE_128,
+                            Html5QrcodeSupportedFormats.CODE_39
+                        ]
+                    },
+                    (decodedText) => {
+                        onCodeDetected(decodedText);
+                    },
+                    () => {}
+                );
+
+                state.scanner.active = true;
+                state.scanner.mode = mode;
+                state.scanner.viewportId = targetId;
+                state.scanner.instance = scannerInstance;
+                state.scanner.pauseUntil = 0;
+                state.scanner.processing = false;
+
+                setScannerButtonState("togglePosScannerBtn", mode === "pos");
+                setScannerButtonState("toggleCatalogScannerBtn", mode === "catalog");
+                showToast("Camera opened. Scan one barcode.", "success");
+            } catch (error) {
+                console.error("Scanner error:", error);
+                resetScannerViewport();
+                showToast("Camera error or permission denied", "error");
+            }
+        }
+
+        document.querySelectorAll(".nav-btn").forEach((button) => {
+            button.addEventListener("click", () => {
+                switchPage(button.dataset.page);
+            });
+        });
+        document.getElementById("settingsReportsTabBtn").addEventListener("click", () => switchSettingsTab("reports"));
+        document.getElementById("settingsToolsTabBtn").addEventListener("click", () => switchSettingsTab("tools"));
+        document.getElementById("openSettingsBtn").addEventListener("click", openOwnerSettings);
+        document.getElementById("saveProductPagePasswordBtn").addEventListener("click", saveProductPagePassword);
+        document.getElementById("productPagePasswordSettingInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveProductPagePassword();
+            }
+        });
+        document.getElementById("refreshOwnerReportsBtn").addEventListener("click", refreshOwnerReports);
+        document.getElementById("openLowStockModalBtn").addEventListener("click", openLowStockModal);
+        document.getElementById("productOpenLowStockModalBtn").addEventListener("click", openLowStockModal);
+        document.getElementById("openSavedProductsBtn").addEventListener("click", openSavedProductsModal);
+        const openPrinterModalBtn = document.getElementById("openPrinterModalBtn");
+        if (openPrinterModalBtn) {
+            openPrinterModalBtn.addEventListener("click", openPrinterModal);
+        }
+        document.getElementById("autoReceiptToggle").addEventListener("change", (event) => {
+            setAutoReceiptEnabled(event.target.checked);
+        });
+        document.getElementById("closePrinterModalBtn").addEventListener("click", closePrinterModal);
+        document.getElementById("searchPrinterDeviceBtn").addEventListener("click", searchAvailablePrinterDevice);
+        document.getElementById("disconnectPrinterBtn").addEventListener("click", () => disconnectPrinter());
+        document.getElementById("saveLowStockThresholdBtn").addEventListener("click", saveLowStockThreshold);
+        document.getElementById("productSaveLowStockThresholdBtn").addEventListener("click", () => saveLowStockThreshold("productLowStockThresholdInput"));
+        document.getElementById("backupProductsBtn").addEventListener("click", backupProducts);
+        document.getElementById("backupSalesBtn").addEventListener("click", backupSales);
+        document.getElementById("backupAllBtn").addEventListener("click", backupAllData);
+        document.getElementById("restoreProductsBtn").addEventListener("click", () => openRestorePicker("products"));
+        document.getElementById("restoreSalesBtn").addEventListener("click", () => openRestorePicker("sales"));
+        document.getElementById("restoreAllBtn").addEventListener("click", () => openRestorePicker("all"));
+        document.getElementById("restoreBackupInput").addEventListener("change", async (event) => {
+            const [file] = event.target.files || [];
+            await restoreBackupFile(file);
+        });
+        document.getElementById("resetPosViewBtn").addEventListener("click", resetPosView);
+        document.getElementById("resetProductEntryBtn").addEventListener("click", resetProductEntry);
+        document.getElementById("resetLowStockThresholdBtn").addEventListener("click", resetLowStockThreshold);
+
+        const togglePosScannerBtn = document.getElementById("togglePosScannerBtn");
+        if (togglePosScannerBtn) {
+            togglePosScannerBtn.addEventListener("click", () => {
+                if (state.scanner.active && state.scanner.mode === "pos") {
+                    stopScanner();
+                } else {
+                    startScanner("pos");
+                }
+            });
+        }
+
+        document.getElementById("toggleCatalogScannerBtn").addEventListener("click", () => {
+            if (state.scanner.active && state.scanner.mode === "catalog") {
+                stopScanner();
+            } else {
+                startScanner("catalog");
+            }
+        });
+        document.getElementById("closeScannerModalBtn").addEventListener("click", () => {
+            stopScanner();
+        });
+        document.getElementById("scannerModal").addEventListener("click", (event) => {
+            if (event.target.id === "scannerModal") {
+                stopScanner();
+            }
+        });
+        document.getElementById("printerModal").addEventListener("click", (event) => {
+            if (event.target.id === "printerModal") {
+                closePrinterModal();
+            }
+        });
+        document.getElementById("openCatalogFormBtn").addEventListener("click", () => {
+            resetCatalogForm();
+            openCatalogFormModal();
+        });
+        document.getElementById("closeCatalogFormModalBtn").addEventListener("click", closeCatalogFormModal);
+        document.getElementById("catalogFormModal").addEventListener("click", (event) => {
+            if (event.target.id === "catalogFormModal") {
+                closeCatalogFormModal();
+            }
+        });
+        document.getElementById("closeOwnerPasswordModalBtn").addEventListener("click", closeOwnerPasswordModal);
+        document.getElementById("submitOwnerPasswordBtn").addEventListener("click", submitOwnerPassword);
+        document.getElementById("ownerPasswordModal").addEventListener("click", (event) => {
+            if (event.target.id === "ownerPasswordModal") {
+                closeOwnerPasswordModal();
+            }
+        });
+        document.getElementById("closeProductPasswordModalBtn").addEventListener("click", closeProductPasswordModal);
+        document.getElementById("submitProductPasswordBtn").addEventListener("click", submitProductPassword);
+        document.getElementById("productPasswordModal").addEventListener("click", (event) => {
+            if (event.target.id === "productPasswordModal") {
+                closeProductPasswordModal();
+            }
+        });
+        document.getElementById("closeSaleCompleteModalBtn").addEventListener("click", closeSaleCompleteModal);
+        document.getElementById("saleCompleteModal").addEventListener("click", (event) => {
+            if (event.target.id === "saleCompleteModal") {
+                closeSaleCompleteModal();
+            }
+        });
+        document.getElementById("closeLowStockModalBtn").addEventListener("click", closeLowStockModal);
+        document.getElementById("lowStockModal").addEventListener("click", (event) => {
+            if (event.target.id === "lowStockModal") {
+                closeLowStockModal();
+            }
+        });
+        document.getElementById("closeSavedProductsModalBtn").addEventListener("click", closeSavedProductsModal);
+        document.getElementById("savedProductsModal").addEventListener("click", (event) => {
+            if (event.target.id === "savedProductsModal") {
+                closeSavedProductsModal();
+            }
+        });
+        document.getElementById("posManualLookupBtn").addEventListener("click", () => {
+            handlePosLookup(document.getElementById("posManualBarcode").value, true);
+            document.getElementById("posManualBarcode").value = "";
+            renderManualBarcodeMatches("pos");
+        });
+
+        document.getElementById("catalogManualLookupBtn").addEventListener("click", () => {
+            handleCatalogLookup(document.getElementById("catalogManualBarcode").value);
+            renderManualBarcodeMatches("catalog");
+        });
+
+        document.getElementById("posManualBarcode").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                handlePosLookup(event.target.value, true);
+                event.target.value = "";
+                renderManualBarcodeMatches("pos");
+            }
+        });
+
+        document.getElementById("catalogManualBarcode").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                handleCatalogLookup(event.target.value);
+            }
+        });
+        document.getElementById("catalogBarcode").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                handleCatalogLookup(event.target.value);
+            }
+        });
+        document.getElementById("posManualBarcode").addEventListener("input", () => {
+            renderManualBarcodeMatches("pos");
+        });
+        document.getElementById("catalogManualBarcode").addEventListener("input", () => {
+            renderManualBarcodeMatches("catalog");
+        });
+        document.getElementById("openCatalogPhotoBtn").addEventListener("click", () => {
+            document.getElementById("catalogPhotoInput").click();
+        });
+        document.getElementById("removeCatalogPhotoBtn").addEventListener("click", removeCatalogPhoto);
+        document.getElementById("webSearchBarcodeBtn").addEventListener("click", () => openBarcodeWebSource("web"));
+        document.getElementById("shopeeSearchBarcodeBtn").addEventListener("click", () => openBarcodeWebSource("shopee"));
+        document.getElementById("lazadaSearchBarcodeBtn").addEventListener("click", () => openBarcodeWebSource("lazada"));
+        document.getElementById("catalogPhotoInput").addEventListener("change", async (event) => {
+            const [file] = event.target.files || [];
+            await handleCatalogPhotoChange(file);
+        });
+        document.getElementById("ownerPasswordInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                submitOwnerPassword();
+            }
+        });
+        document.getElementById("productPasswordInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                submitProductPassword();
+            }
+        });
+        document.getElementById("lowStockThresholdInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveLowStockThreshold();
+            }
+        });
+        document.getElementById("productLowStockThresholdInput").addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                saveLowStockThreshold("productLowStockThresholdInput");
+            }
+        });
+
+        document.getElementById("saveCatalogProductBtn").addEventListener("click", () => saveCatalogProduct());
+        document.getElementById("saveCatalogAndScanBtn").addEventListener("click", () => saveCatalogProduct({ scanNext: true }));
+        document.getElementById("resetCatalogFormBtn").addEventListener("click", resetCatalogForm);
+        document.getElementById("seedDemoProductsBtn").addEventListener("click", addDemoProducts);
+        document.getElementById("refreshProductsBtn").addEventListener("click", fetchProducts);
+        document.getElementById("filterLowStockProductsBtn").addEventListener("click", toggleCatalogLowStockFilter);
+        document.getElementById("enrichProductsBtn").addEventListener("click", enrichProductsWithBarcodeDetails);
+        document.getElementById("downloadProductCsvTemplateBtn").addEventListener("click", downloadProductCsvTemplate);
+        document.getElementById("importProductCsvBtn").addEventListener("click", openProductCsvImport);
+        document.getElementById("productCsvImportInput").addEventListener("change", async (event) => {
+            const [file] = event.target.files || [];
+            await importProductCsvFile(file);
+        });
+        document.getElementById("openProductLowStocksBtn").addEventListener("click", openProductLowStocks);
+        document.getElementById("checkoutBtn").addEventListener("click", completeSale);
+        document.getElementById("printReceiptBtn").addEventListener("click", printReceipt);
+        document.getElementById("clearCartBtn").addEventListener("click", () => clearCart());
+        document.getElementById("applyCashBtn").addEventListener("click", updatePaymentSummary);
+        document.getElementById("cashReceivedInput").addEventListener("input", updatePaymentSummary);
+        document.querySelectorAll("[data-cash-amount]").forEach((button) => {
+            button.addEventListener("click", () => {
+                document.getElementById("cashReceivedInput").value = button.dataset.cashAmount;
+                updatePaymentSummary();
+            });
+        });
+        const posProductSearchInput = document.getElementById("posProductSearchInput");
+        if (posProductSearchInput) {
+            posProductSearchInput.addEventListener("input", renderPosSearchResults);
+        }
+        document.getElementById("catalogSearchInput").addEventListener("input", renderCatalogProducts);
+        document.getElementById("catalogCategoryFilter").addEventListener("change", renderCatalogProducts);
+        document.getElementById("catalogCategorySelect").addEventListener("change", handleCatalogCategorySelect);
+        document.getElementById("catalogCategory").addEventListener("input", syncCatalogCategorySelectFromInput);
+        [
+            "catalogBarcode",
+            "catalogName",
+            "catalogCategory",
+            "catalogPrice",
+            "catalogStock",
+            "catalogUnit",
+            "catalogNotes"
+        ].forEach((fieldId) => {
+            document.getElementById(fieldId).addEventListener("input", syncCatalogPreviewFromForm);
+        });
+        document.addEventListener("keydown", (event) => {
+            handleHardwareKeyboardEvent(event).catch((error) => {
+                console.error("Hardware scanner keyboard handling failed:", error);
+            });
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") {
+                return;
+            }
+
+            if (document.getElementById("printerModal").classList.contains("active")) {
+                closePrinterModal();
+                return;
+            }
+
+            if (document.getElementById("scannerModal").classList.contains("active")) {
+                stopScanner();
+                return;
+            }
+
+            if (document.getElementById("catalogFormModal").classList.contains("active")) {
+                closeCatalogFormModal();
+                return;
+            }
+
+            if (document.getElementById("ownerPasswordModal").classList.contains("active")) {
+                closeOwnerPasswordModal();
+                return;
+            }
+
+            if (document.getElementById("productPasswordModal").classList.contains("active")) {
+                closeProductPasswordModal();
+                return;
+            }
+
+            if (document.getElementById("saleCompleteModal").classList.contains("active")) {
+                closeSaleCompleteModal();
+                return;
+            }
+
+            if (document.getElementById("lowStockModal").classList.contains("active")) {
+                closeLowStockModal();
+                return;
+            }
+
+            if (document.getElementById("savedProductsModal").classList.contains("active")) {
+                closeSavedProductsModal();
+            }
+        });
+
+        if ("serial" in navigator && typeof navigator.serial.addEventListener === "function") {
+            navigator.serial.addEventListener("disconnect", () => {
+                if (state.hardwareScanner.serialConnected) {
+                    disconnectHardwareScanner(false).finally(() => {
+                        showToast("Hardware scanner disconnected", "info");
+                    });
+                }
+                if (state.printer.serialConnected) {
+                    disconnectPrinter(false).finally(() => {
+                        showToast("Printer disconnected", "info");
+                    });
+                }
+            });
+        }
+
+        if ("hid" in navigator && typeof navigator.hid.addEventListener === "function") {
+            navigator.hid.addEventListener("disconnect", () => {
+                if (state.hardwareScanner.hidConnected) {
+                    state.hardwareScanner.hidConnected = false;
+                    state.hardwareScanner.hidDevice = null;
+                    state.hardwareScanner.deviceLabel = "";
+                    state.hardwareScanner.mode = "keyboard";
+                    updateHardwareScannerStatus();
+                    showToast("HID scanner disconnected", "info");
+                }
+                if (state.printer.hidConnected) {
+                    state.printer.hidConnected = false;
+                    state.printer.hidDevice = null;
+                    state.printer.deviceLabel = "";
+                    state.printer.connectionType = "";
+                    updatePrinterStatus();
+                    showToast("Printer disconnected", "info");
+                }
+            });
+        }
+
+        renderCart();
+        resetCatalogForm();
+        renderPosLookup(null, "");
+        renderPosSearchResults();
+        renderOwnerReports();
+        switchSettingsTab(state.settingsTab);
+        syncLowStockThresholdInput();
+        syncAutoReceiptToggle();
+        updatePrinterStatus();
+        updateHardwareScannerStatus();
+        updatePrintButton();
+        restoreKnownPrinterDevices();
+        restoreKnownHidScanner();
+        restoreKnownSerialScanner();
+        fetchProducts();
+        fetchSales({ silent: true });
+    </script>
+</body>
+</html>
